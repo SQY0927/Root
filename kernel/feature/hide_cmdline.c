@@ -5,6 +5,7 @@
 #include <linux/types.h>
 
 #include "feature/hide_cmdline.h"
+#include "hook/patch_memory.h"
 #include "infra/symbol_resolver.h"
 #include "policy/feature.h"
 #include "uapi/feature.h"
@@ -71,18 +72,23 @@ static bool armed;           /* 已完成原地替换，开关才有意义 */
 
 /*
  * saved_command_line 在 arm64/generic 内核里是 `char *`（指针），但部分厂商
- * 或老内核（arch/*/kernel/setup.c）把它定义成 `char saved_command_line[]`
+ * 或老内核（arch/<arch>/kernel/setup.c）把它定义成 `char saved_command_line[]`
  * 静态数组。若不加判断就按指针解引用，数组形态下会把 cmdline 的前 8 个 ASCII
  * 字节当成地址，随后 strlen() 读这个野指针直接 oops。
  *
- * 这里用 virt_addr_valid() 判定：它是带区间边界检查的宏（PAGE_OFFSET..
- * high_memory 再加 pfn_valid），对任意垃圾值只会返回 false，不会去解引用或
- * 走页表。早期 memblock 分配的 cmdline 缓冲区就落在线性映射区，因此该判定
- * 既能放行真指针，也能否掉数组形态误读出来的假地址。
+ * 这里用 phys_from_virt() 判定：它沿 init_mm 的页表把地址翻译成物理地址，
+ * 只读内核页表、不解引用目标地址，任意垃圾值只会返回 -ENOENT。早期 memblock
+ * 分配的 cmdline 缓冲区就落在线性映射区，因此该判定既能放行真指针，也能
+ * 否掉数组形态误读出来的假地址。
  */
 static bool ksu_is_kernel_va(const void *addr)
 {
-    return addr && virt_addr_valid(addr);
+    int err = 0;
+
+    if (!addr)
+        return false;
+    phys_from_virt((unsigned long)addr, &err);
+    return !err;
 }
 
 static void hide_cmdline_write(const char *src)

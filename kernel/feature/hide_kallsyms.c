@@ -128,7 +128,7 @@ void __init ksu_hide_kallsyms_init(void)
          */
         if (!try_module_get(THIS_MODULE))
             pr_err("hide_kallsyms: failed to pin module, rmmod may be unsafe\n");
-        pr_info("hide_kallsyms: patched show -> %pS\n", hooked_kallsyms_show);
+        pr_info("hide_kallsyms: patched show -> %pS\n", (void *)hooked_kallsyms_show);
     }
 
 register_feature:
