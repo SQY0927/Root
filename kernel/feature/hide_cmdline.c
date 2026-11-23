@@ -45,7 +45,7 @@
  *   - 全 UID 一致：不存在 root 与 app 读到不同内容这种可交叉验证的破绽。
  *   - 长度不变：替换串强制 pad 到原长度，saved_command_line_len、pde->size
  *     和 inode 大小与实际读出字节数天然自洽，不留 “stat 长度 != read 长度” 特征。
- *   - /proc/bootconfig、/proc/sys/kernel/* 不受影响，但 /proc/cmdline 的
+ *   - /proc/bootconfig、/proc/sys/kernel 下的其它文件不受影响，但 /proc/cmdline 的
  *     androidboot.* 与 KSU 特征参数一并变干净。
  *
  * 时机安全：本模块在 KernelSU init 阶段执行，早于任何应用读 cmdline；而内核
