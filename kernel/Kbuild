@@ -1,5 +1,7 @@
 kernelsu-objs := core/init.o
-
+kernelsu-objs += feature/spoof_uname.o
+kernelsu-objs += feature/hide_kallsyms.o
+kernelsu-objs += feature/hide_cmdline.o
 kernelsu-objs += feature/kernel_umount.o
 kernelsu-objs += feature/module_blacklist.o
 kernelsu-objs += feature/sulog.o
