@@ -9,6 +9,9 @@ enum ksu_feature_id {
     KSU_FEATURE_SELINUX_HIDE = 4,
     // 5 was webview_zygote_umount (v3.3.0), keep it unused so stale configs don't apply
     KSU_FEATURE_SHELL_SU_ADB_ONLY = 6,
+    KSU_FEATURE_HIDE_KALLSYMS = 7,
+    KSU_FEATURE_SPOOF_UNAME = 8,
+    KSU_FEATURE_HIDE_CMDLINE = 9,
 
     KSU_FEATURE_MAX
 };
