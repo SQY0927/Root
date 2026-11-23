@@ -8,11 +8,7 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/uaccess.h>
-
-#include <linux/version.h>
-#if defined(__x86_64__) && LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
 #include <linux/mm.h>
-#endif
 
 #include "feature/sulog.h"
 #include "infra/event_queue.h"
