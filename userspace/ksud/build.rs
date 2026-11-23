@@ -33,6 +33,34 @@ fn get_git_version() -> Result<(u32, String), std::io::Error> {
     Ok((version_code, version_name))
 }
 
+fn get_version() -> (u32, String) {
+    let git_version = get_git_version().ok();
+    let env_version = env::var("KSU_VERSION")
+        .ok()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty());
+
+    if git_version.is_none() && env_version.is_none() {
+        // show warning if git is not installed and no override is provided
+        println!("cargo:warning=Failed to get git version, using 0.0.0");
+    }
+
+    let code = match &env_version {
+        Some(v) => v.parse::<u32>().unwrap_or_else(|_| {
+            println!("cargo:warning=KSU_VERSION={v} is not a valid number, ignoring it");
+            git_version.as_ref().map(|(code, _)| *code).unwrap_or(0)
+        }),
+        None => git_version.as_ref().map(|(code, _)| *code).unwrap_or(0),
+    };
+
+    let name = match &git_version {
+        Some((_, name)) => name.clone(),
+        None => env_version.unwrap_or("0.0.0".to_string()),
+    };
+
+    (code, name)
+}
+
 fn configure_bindgen() {
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
@@ -225,14 +253,8 @@ fn assemble_bootstrap() {
 fn main() {
     assemble_bootstrap();
 
-    let (code, name) = match get_git_version() {
-        Ok((code, name)) => (code, name),
-        Err(_) => {
-            // show warning if git is not installed
-            println!("cargo:warning=Failed to get git version, using 0.0.0");
-            (0, "0.0.0".to_string())
-        }
-    };
+    println!("cargo:rerun-if-env-changed=KSU_VERSION");
+    let (code, name) = get_version();
     if env::var("KSU_PACKAGE_NAME").is_err() {
         println!("cargo:rustc-env=KSU_PACKAGE_NAME=me.weishu.kernelsu");
     }

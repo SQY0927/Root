@@ -2,6 +2,11 @@ name: Build LKM for KernelSU
 on:
   workflow_call:
     inputs:
+      kmi:
+        description: 'KMI to build; "all" builds the full matrix'
+        required: false
+        default: all
+        type: string
       package_name:
         description: 'package name of manager'
         required: false
@@ -18,9 +23,37 @@ on:
         default: ''
         type: string
   workflow_dispatch:
+    inputs:
+      kmi:
+        description: 'Build one KMI only; keep "all" to build the full matrix'
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - android12-5.10
+          - android13-5.10
+          - android13-5.15
+          - android14-5.15
+          - android14-6.1
+          - android15-6.6
+          - android16-6.12
+          - android17-6.18
 jobs:
+  # This matrix is the complete set of GKI KMI branches that are both in
+  # AOSP's support lifetime table and buildable as a GKI 2.0 module.  GKI 1.0
+  # (android11-5.4, android12-5.4) is intentionally absent: those branches are
+  # EOL, predate the stable KMI (5.10+), and KernelSU only ships LKM for GKI
+  # 2.0, so there is no DDK image or compatible module build for them.
   build-lkm:
+    # Driven only by our own declared input: inside a reusable workflow
+    # github.event_name is inherited from the caller, so it cannot tell a
+    # direct dispatch from a manual release that called us.
+    if: ${{ inputs.kmi == '' || inputs.kmi == 'all' }}
     strategy:
+      # One failing KMI must not cancel the others: the release job needs every
+      # ko that still builds.
+      fail-fast: false
       matrix:
         kmi:
           - android12-5.10
@@ -34,6 +67,17 @@ jobs:
     uses: ./.github/workflows/ddk-lkm.yml
     with:
       kmi: ${{ matrix.kmi }}
+      package_name: ${{ inputs.package_name || '' }}
+      expected_size: ${{ inputs.expected_size || '' }}
+      expected_hash: ${{ inputs.expected_hash || '' }}
+
+  build-one:
+    # Manual dispatch can target a single KMI so a failing leg can be debugged
+    # without waiting for the other seven.
+    if: ${{ inputs.kmi != '' && inputs.kmi != 'all' }}
+    uses: ./.github/workflows/ddk-lkm.yml
+    with:
+      kmi: ${{ inputs.kmi }}
       package_name: ${{ inputs.package_name || '' }}
       expected_size: ${{ inputs.expected_size || '' }}
       expected_hash: ${{ inputs.expected_hash || '' }}

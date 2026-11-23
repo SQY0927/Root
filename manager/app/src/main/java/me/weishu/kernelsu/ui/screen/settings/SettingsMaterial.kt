@@ -24,12 +24,15 @@ import androidx.compose.material.icons.filled.DisplaySettings
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LayersClear
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.SystemUpdateAlt
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.SnackbarHostState
@@ -276,6 +279,54 @@ fun SettingPagerMaterial(
                                 enabled = uiState.shellSuAdbOnlyStatus == "supported",
                                 checked = uiState.isShellSuAdbOnlyEnabled,
                                 onCheckedChange = actions.onSetShellSuAdbOnlyEnabled
+                            )
+                        },
+                        {
+                            val hideKallsymsSummary = when (uiState.hideKallsymsStatus) {
+                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
+                                else -> stringResource(id = R.string.settings_hide_kallsyms_summary)
+                            }
+                            SegmentedSwitchItem(
+                                icon = Icons.Filled.VisibilityOff,
+                                title = stringResource(id = R.string.settings_hide_kallsyms),
+                                summary = hideKallsymsSummary,
+                                enabled = uiState.hideKallsymsStatus == "supported",
+                                checked = uiState.isHideKallsymsEnabled,
+                                onCheckedChange = actions.onSetHideKallsymsEnabled
+                            )
+                        },
+                        {
+                            val spoofUnameSummary = when (uiState.spoofUnameStatus) {
+                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
+                                else -> stringResource(id = R.string.settings_spoof_uname_summary)
+                            }
+                            SegmentedSwitchItem(
+                                icon = Icons.Filled.Memory,
+                                title = stringResource(id = R.string.settings_spoof_uname),
+                                summary = spoofUnameSummary,
+                                enabled = uiState.spoofUnameStatus == "supported",
+                                checked = uiState.isSpoofUnameEnabled,
+                                onCheckedChange = actions.onSetSpoofUnameEnabled
+                            )
+                        },
+                        {
+                            val hideCmdlineSummary = when (uiState.hideCmdlineStatus) {
+                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
+                                else -> stringResource(id = R.string.settings_hide_cmdline_summary)
+                            }
+                            SegmentedSwitchItem(
+                                icon = Icons.Filled.Terminal,
+                                title = stringResource(id = R.string.settings_hide_cmdline),
+                                summary = hideCmdlineSummary,
+                                enabled = uiState.hideCmdlineStatus == "supported",
+                                checked = uiState.isHideCmdlineEnabled,
+                                onCheckedChange = actions.onSetHideCmdlineEnabled
                             )
                         },
                         {

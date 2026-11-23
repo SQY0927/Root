@@ -2,6 +2,7 @@
 #include <linux/rcupdate.h>
 #include <linux/slab.h>
 #include <linux/mm.h>
+#include <linux/mutex.h>
 #include <asm/current.h>
 #include <linux/compat.h>
 #include <linux/cred.h>
@@ -17,6 +18,7 @@
 #include <linux/uaccess.h>
 #include <linux/namei.h>
 #include <linux/workqueue.h>
+#include <linux/atomic.h>
 #include <linux/uio.h>
 #include <linux/stat.h>
 
@@ -199,6 +201,15 @@ static char *module_rc_buf;
 static size_t module_rc_len;
 static ssize_t module_rc_pos;
 
+/*
+ * 保护上面这些追加状态（静态 rc 偏移 + 模块 rc 缓冲区/长度/偏移）以及
+ * module_rc_buf 的加载与释放。read()/read_iter() 都是可睡眠的进程上下文，
+ * copy_to_user()/copy_to_iter() 也可能睡眠，因此用 mutex 而不是 spinlock。
+ * 没有这把锁时，read_proxy() 里「检查 pos / 算指针」与 free_module_rc()
+ * 之间存在释放窗口，构成 UAF。
+ */
+static DEFINE_MUTEX(rc_state_lock);
+
 static struct file *open_module_rc(const char **chosen_path)
 {
     struct file *f = filp_open(MODULE_RC_PATH_VOLD, O_RDONLY, 0);
@@ -220,7 +231,7 @@ static struct file *open_module_rc(const char **chosen_path)
     return f;
 }
 
-static void load_module_rc_once(void)
+static void load_module_rc_once_locked(void)
 {
     static bool loaded = false;
     struct file *f;
@@ -282,6 +293,13 @@ out_revert_creds:
     revert_creds(old_cred);
 }
 
+static void load_module_rc_once(void)
+{
+    mutex_lock(&rc_state_lock);
+    load_module_rc_once_locked();
+    mutex_unlock(&rc_state_lock);
+}
+
 static void free_module_rc(void)
 {
     kvfree(module_rc_buf);
@@ -294,7 +312,7 @@ static void free_module_rc(void)
 // The system will read init.rc file until EOF, whenever read() returns 0,
 // so we begin append ksu rc when we meet EOF.
 
-static ssize_t read_proxy(struct file *file, char __user *buf, size_t count, loff_t *pos)
+static ssize_t read_proxy_locked(struct file *file, char __user *buf, size_t count, loff_t *pos)
 {
     ssize_t ret = 0;
     size_t append_count;
@@ -350,7 +368,7 @@ append_module_rc:
     return ret;
 }
 
-static ssize_t read_iter_proxy(struct kiocb *iocb, struct iov_iter *to)
+static ssize_t read_iter_proxy_locked(struct kiocb *iocb, struct iov_iter *to)
 {
     ssize_t ret = 0;
     size_t append_count;
@@ -402,10 +420,47 @@ append_module_rc:
     return ret;
 }
 
+/*
+ * 两个 proxy 在入口统一持锁：从「读 pos / 取缓冲区指针」到推进偏移、直到
+ * 最后一次追加后 free_module_rc()，全程原子，消除了检查与使用之间以及
+ * 拷贝与释放之间的窗口。
+ */
+static ssize_t read_proxy(struct file *file, char __user *buf, size_t count, loff_t *pos)
+{
+    ssize_t ret;
+
+    mutex_lock(&rc_state_lock);
+    ret = read_proxy_locked(file, buf, count, pos);
+    mutex_unlock(&rc_state_lock);
+
+    return ret;
+}
+
+static ssize_t read_iter_proxy(struct kiocb *iocb, struct iov_iter *to)
+{
+    ssize_t ret;
+
+    mutex_lock(&rc_state_lock);
+    ret = read_iter_proxy_locked(iocb, to);
+    mutex_unlock(&rc_state_lock);
+
+    return ret;
+}
+
 static bool is_init_rc(struct file *fp)
 {
-    if (strcmp(current->comm, "init")) {
-        // we are only interest in `init` process
+    /*
+     * 不能用 current->comm 判定身份：普通进程可以 prctl(PR_SET_NAME) 把自己
+     * 改名成 "init"，随后打开 init.rc 就会触发注入并推进全局偏移，导致真正
+     * 的 init 读到被截断的内容。
+     *
+     * task_struct->tgid 保存的是进程在初始（全局）pid namespace 中的 tgid
+     * （fork 时 p->tgid = pid_nr(pid) = pid->numbers[0].nr），只有内核拉起的
+     * 那个 init 线程组才是 1；子 pid namespace 里的进程其全局 tgid 不可能是
+     * 1，普通进程更无法伪造，因此这是不可被 comm 欺骗的身份依据。
+     */
+    if (current->tgid != 1) {
+        // we are only interest in the real `init` process (pid 1)
         return false;
     }
 
@@ -578,6 +633,46 @@ static long ksu_sys_read(const struct pt_regs *regs)
 }
 
 static long (*orig_sys_fstat)(const struct pt_regs *regs);
+
+/*
+ * __NR_fstat is patched into sys_call_table unconditionally, i.e. it costs a
+ * fget/fput on every fstat() call of every process on the device, while the
+ * thing it looks for (init reading init.rc) happens once at boot. It also
+ * cannot be fenced by the tracepoint marker, because table patching bypasses
+ * the dispatcher entirely.
+ *
+ * init.rc content is normally delivered through read()/read_iter(), and
+ * ksu_install_rc_hook() already unhooks both __NR_read and __NR_fstat the
+ * first time that path fires (see stop_init_rc_hook()). The fstat hook only
+ * exists to fix up st_size before that happens. So: self-retire as soon as it
+ * has done its one job, and again right after a successful .rc read, which
+ * removes the per-call cost from the steady-state kernel.
+ */
+static void stop_fstat_hook_deferred(struct work_struct *work);
+
+static DECLARE_WORK(stop_fstat_work, stop_fstat_hook_deferred);
+
+static void stop_fstat_hook_deferred(struct work_struct *work)
+{
+    ksu_syscall_table_unhook(__NR_fstat);
+    pr_info("ksud: __NR_fstat unhooked after rc size fixup\n");
+}
+
+/*
+ * ksu_syscall_table_unhook() takes hooked_entries_lock and runs patch_text
+ * under stop_machine(), so it must not be called on the syscall path itself.
+ * Hand it to a workqueue instead: the hook keeps serving until the worker
+ * swaps the table entry back.
+ */
+static void stop_fstat_hook_once(void)
+{
+    static atomic_t scheduled = ATOMIC_INIT(0);
+
+    if (atomic_xchg(&scheduled, 1))
+        return;
+    schedule_work(&stop_fstat_work);
+}
+
 static long ksu_sys_fstat(const struct pt_regs *regs)
 {
     unsigned int fd = PT_REGS_SYSCALL_PARM1(regs);
@@ -600,10 +695,17 @@ static long ksu_sys_fstat(const struct pt_regs *regs)
     if (is_rc) {
         void __user *st_size_ptr = statbuf + offsetof(struct stat, st_size);
         long size, new_size;
-        size_t extra = ksu_rc_len + module_rc_len;
+        size_t static_len = ksu_rc_len, mod_len, extra;
+
+        // 与 read 路径共享 module_rc_len，取锁后取快照，避免读到被释放/更新中的状态
+        mutex_lock(&rc_state_lock);
+        mod_len = module_rc_len;
+        mutex_unlock(&rc_state_lock);
+        extra = static_len + mod_len;
+
         if (!copy_from_user_nofault(&size, st_size_ptr, sizeof(long))) {
             new_size = size + extra;
-            pr_info("adding rc len: %ld -> %ld (static=%zu module=%zu)", size, new_size, ksu_rc_len, module_rc_len);
+            pr_info("adding rc len: %ld -> %ld (static=%zu module=%zu)", size, new_size, static_len, mod_len);
             if (!copy_to_user_nofault(st_size_ptr, &new_size, sizeof(long))) {
                 pr_info("added rc len");
             } else {
@@ -612,6 +714,9 @@ static long ksu_sys_fstat(const struct pt_regs *regs)
         } else {
             pr_err("read statbuf 0x%lx failed", (unsigned long)st_size_ptr);
         }
+
+        // One-shot job done: drop the patch so other processes stop paying for it.
+        stop_fstat_hook_once();
     }
 
     return ret;
@@ -635,11 +740,28 @@ static void do_stop_input_hook(struct work_struct *work)
     unregister_kprobe(&input_event_kp);
 }
 
-static void stop_init_rc_hook()
+static void stop_init_rc_hook_deferred(struct work_struct *work)
 {
     ksu_syscall_table_unhook(__NR_read);
     ksu_syscall_table_unhook(__NR_fstat);
     pr_info("unregister init_rc syscall hook\n");
+}
+
+static DECLARE_WORK(stop_init_rc_work, stop_init_rc_hook_deferred);
+
+/*
+ * Called from inside the intercepted read()/read_iter() path, where taking
+ * hooked_entries_lock and running patch_text under stop_machine() is unsafe.
+ * Defer the table restore to a worker; the current call still completes
+ * through the hook, which simply forwards to the saved original.
+ */
+static void stop_init_rc_hook()
+{
+    static atomic_t scheduled = ATOMIC_INIT(0);
+
+    if (atomic_xchg(&scheduled, 1))
+        return;
+    schedule_work(&stop_init_rc_work);
 }
 
 void ksu_stop_input_hook_runtime(void)
@@ -673,7 +795,10 @@ void __exit ksu_ksud_exit()
     // stop_init_rc_hook();
     unregister_kprobe(&input_event_kp);
 
+    // 与 read proxy 共用同一把锁，避免卸载时与正在进行的追加读发生 UAF
+    mutex_lock(&rc_state_lock);
     if (module_rc_buf) {
         free_module_rc();
     }
+    mutex_unlock(&rc_state_lock);
 }

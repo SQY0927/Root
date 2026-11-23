@@ -26,12 +26,15 @@ import androidx.compose.material.icons.rounded.DisplaySettings
 import androidx.compose.material.icons.rounded.FlashOn
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LayersClear
+import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
+import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material.icons.rounded.VerifiedUser
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -345,6 +348,71 @@ fun SettingPagerMiuix(
                                 enabled = uiState.shellSuAdbOnlyStatus == "supported",
                                 checked = uiState.isShellSuAdbOnlyEnabled,
                                 onCheckedChange = actions.onSetShellSuAdbOnlyEnabled
+                            )
+                            val hideKallsymsSummary = when (uiState.hideKallsymsStatus) {
+                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
+                                else -> stringResource(id = R.string.settings_hide_kallsyms_summary)
+                            }
+                            SwitchPreference(
+                                title = stringResource(id = R.string.settings_hide_kallsyms),
+                                summary = hideKallsymsSummary,
+                                startAction = {
+                                    Icon(
+                                        Icons.Rounded.VisibilityOff,
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        contentDescription = stringResource(id = R.string.settings_hide_kallsyms),
+                                        tint = if (uiState.hideKallsymsStatus == "supported") colorScheme.onBackground else colorScheme.disabledOnSecondaryVariant
+                                    )
+                                },
+                                enabled = uiState.hideKallsymsStatus == "supported",
+                                checked = uiState.isHideKallsymsEnabled,
+                                onCheckedChange = actions.onSetHideKallsymsEnabled
+                            )
+
+                            val spoofUnameSummary = when (uiState.spoofUnameStatus) {
+                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
+                                else -> stringResource(id = R.string.settings_spoof_uname_summary)
+                            }
+                            SwitchPreference(
+                                title = stringResource(id = R.string.settings_spoof_uname),
+                                summary = spoofUnameSummary,
+                                startAction = {
+                                    Icon(
+                                        Icons.Rounded.Memory,
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        contentDescription = stringResource(id = R.string.settings_spoof_uname),
+                                        tint = if (uiState.spoofUnameStatus == "supported") colorScheme.onBackground else colorScheme.disabledOnSecondaryVariant
+                                    )
+                                },
+                                enabled = uiState.spoofUnameStatus == "supported",
+                                checked = uiState.isSpoofUnameEnabled,
+                                onCheckedChange = actions.onSetSpoofUnameEnabled
+                            )
+
+                            val hideCmdlineSummary = when (uiState.hideCmdlineStatus) {
+                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
+                                else -> stringResource(id = R.string.settings_hide_cmdline_summary)
+                            }
+                            SwitchPreference(
+                                title = stringResource(id = R.string.settings_hide_cmdline),
+                                summary = hideCmdlineSummary,
+                                startAction = {
+                                    Icon(
+                                        Icons.Rounded.Terminal,
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        contentDescription = stringResource(id = R.string.settings_hide_cmdline),
+                                        tint = if (uiState.hideCmdlineStatus == "supported") colorScheme.onBackground else colorScheme.disabledOnSecondaryVariant
+                                    )
+                                },
+                                enabled = uiState.hideCmdlineStatus == "supported",
+                                checked = uiState.isHideCmdlineEnabled,
+                                onCheckedChange = actions.onSetHideCmdlineEnabled
                             )
                             SwitchPreference(
                                 title = stringResource(id = R.string.settings_soft_reboot),

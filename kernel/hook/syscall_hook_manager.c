@@ -61,12 +61,25 @@ static int syscall_regfunc_handler(struct kretprobe_instance *ri, struct pt_regs
     unsigned long flags;
     ksu_tp_marker_lock(&flags);
     if (ksu_tp_marker_reg_count() < 1) {
-        // while install our tracepoint, mark our processes
+        // First syscall tracepoint user: the kernel's syscall_regfunc() has
+        // just set TIF_SYSCALL_TRACEPOINT on every task, so narrow the marks
+        // back down to the processes we actually track.
         ksu_mark_running_process_locked();
-    } else if (ksu_tp_marker_reg_count() == 1) {
-        // while other tracepoint first added, mark all processes
-        ksu_mark_all_process();
     }
+    /*
+     * When another syscall tracepoint user registers (reg_count == 1) we
+     * deliberately do NOT mark every process.
+     *
+     * The kernel's syscall_regfunc() only marks all tasks on the 0 -> 1
+     * transition of its global refcount; since our tracepoint already holds
+     * that reference, a newcomer never triggers it. Upstream compensated by
+     * marking everything here, so the newcomer would see sys_enter/sys_exit
+     * events for the whole system. That also pushes every process on the
+     * machine through ksu_sys_enter_handler() on every single syscall, which
+     * is exactly the machine-wide timing signal we must not create. Marks
+     * stay policy-scoped instead; the trade-off is that third-party syscall
+     * tracepoints only observe our own processes while KSU is loaded.
+     */
     ksu_tp_marker_inc_reg_count();
     ksu_tp_marker_unlock(&flags);
     return 0;
@@ -139,17 +152,34 @@ void __init ksu_syscall_hook_manager_init(void)
     ksu_register_syscall_hook(__NR_setresuid, ksu_hook_setresuid);
     ksu_register_syscall_hook(__NR_execve, ksu_hook_execve);
     ksu_register_syscall_hook(__NR_execveat, ksu_hook_execveat);
-    ksu_register_syscall_hook(__NR_newfstatat, ksu_hook_newfstatat);
-    ksu_register_syscall_hook(__NR_faccessat, ksu_hook_faccessat);
+    /*
+     * __NR_newfstatat / __NR_faccessat are deliberately NOT registered.
+     *
+     * Those two syscalls are the probe targets of the current timing
+     * side-channel detectors (faccessat vs fchownat sampled tens of
+     * thousands of times, then diffed). Anything that adds work on their
+     * entry path shows up as a measurable delta, so the legacy
+     * "access/stat /system/bin/su" emulation is dropped entirely: a `su` on
+     * this build must come from a real executable, and path-level hiding is
+     * delegated to SUSFS (open_redirect / sus_path), which works inside VFS
+     * path resolution and is therefore invisible to a probe that passes a
+     * NULL pathname.
+     */
 
 #ifdef CONFIG_HAVE_SYSCALL_TRACEPOINTS
     ret = register_trace_prio_sys_enter(ksu_sys_enter_handler, NULL, INT_MIN);
-#ifndef CONFIG_KRETPROBES
-    ksu_mark_running_process_locked();
-#endif
     if (ret) {
         pr_err("hook_manager: failed to register sys_enter tracepoint: %d\n", ret);
     } else {
+        /*
+         * Without kretprobes nothing narrowed the marks yet. With kretprobes
+         * the handler above already did it, but only if we were the first
+         * syscall tracepoint user: when tracing was enabled before us the
+         * kernel never calls syscall_regfunc() again, so enforce the policy
+         * here as well and keep our hooks functional.
+         */
+        if (ksu_tp_marker_reg_count() < 1)
+            ksu_mark_running_process_locked();
         pr_info("hook_manager: sys_enter tracepoint registered\n");
     }
 #endif
@@ -175,8 +205,6 @@ void __exit ksu_syscall_hook_manager_exit(void)
     ksu_unregister_syscall_hook(__NR_setresuid);
     ksu_unregister_syscall_hook(__NR_execve);
     ksu_unregister_syscall_hook(__NR_execveat);
-    ksu_unregister_syscall_hook(__NR_newfstatat);
-    ksu_unregister_syscall_hook(__NR_faccessat);
 
     ksu_syscall_hook_exit();
 

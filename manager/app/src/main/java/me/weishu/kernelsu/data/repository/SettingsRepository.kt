@@ -61,6 +61,21 @@ interface SettingsRepository {
     suspend fun getShellSuAdbOnlyValue(): Long?
     fun setShellSuAdbOnlyEnabled(enabled: Boolean): Boolean
 
+    suspend fun getHideKallsymsStatus(): String
+    suspend fun getHideKallsymsPersistValue(): Long?
+    suspend fun getHideKallsymsValue(): Long?
+    fun setHideKallsymsEnabled(enabled: Boolean): Boolean
+
+    suspend fun getSpoofUnameStatus(): String
+    suspend fun getSpoofUnamePersistValue(): Long?
+    suspend fun getSpoofUnameValue(): Long?
+    fun setSpoofUnameEnabled(enabled: Boolean): Boolean
+
+    suspend fun getHideCmdlineStatus(): String
+    suspend fun getHideCmdlinePersistValue(): Long?
+    suspend fun getHideCmdlineValue(): Long?
+    fun setHideCmdlineEnabled(enabled: Boolean): Boolean
+
     fun isDefaultUmountModules(): Boolean
     fun setDefaultUmountModules(enabled: Boolean): Boolean
 

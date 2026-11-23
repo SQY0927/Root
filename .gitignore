@@ -3,9 +3,13 @@
 CLAUDE.md
 AGENTS.md
 .DS_Store
-/target
+target/
 .cargo/config.toml
 __pycache__
-/dist
+dist/
 /repack-config.json
 /userspace/ksud/.lkm_image_bootstrap.o
+/2026-11-23/
+build/
+node_modules/
+.gradle/

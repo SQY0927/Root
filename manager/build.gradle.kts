@@ -15,21 +15,34 @@ extra["androidTargetCompatibility"] = JavaVersion.VERSION_21
 extra["managerVersionCode"] = getVersionCode()
 extra["managerVersionName"] = getVersionName()
 
-fun getGitCommitCount(): Int {
-    val process = Runtime.getRuntime().exec(arrayOf("git", "rev-list", "--count", "HEAD"))
-    return process.inputStream.bufferedReader().use { it.readText().trim().toInt() }
-}
-
-fun getGitDescribe(): String {
-    val process = Runtime.getRuntime().exec(arrayOf("git", "describe", "--tags", "--always"))
-    return process.inputStream.bufferedReader().use { it.readText().trim() }
+fun gitOutput(vararg args: String): String? {
+    return try {
+        val process = ProcessBuilder(listOf("git") + args)
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .start()
+        val text = process.inputStream.bufferedReader().use { it.readText() }.trim()
+        if (process.waitFor() == 0 && text.isNotEmpty()) text else null
+    } catch (_: Exception) {
+        null
+    }
 }
 
 fun getVersionCode(): Int {
-    val commitCount = getGitCommitCount()
-    return 30000 + commitCount
+    val envVersion = System.getenv("KSU_VERSION")?.trim()?.toIntOrNull()
+    if (envVersion != null) {
+        return envVersion
+    }
+
+    val commitCount = gitOutput("rev-list", "--count", "HEAD")?.toIntOrNull()
+    if (commitCount != null) {
+        return 30000 + commitCount
+    }
+
+    return 30000
 }
 
 fun getVersionName(): String {
-    return getGitDescribe()
+    return gitOutput("describe", "--tags", "--always")
+        ?: System.getenv("KSU_VERSION")?.trim()?.takeIf { it.isNotEmpty() }
+        ?: "30000"
 }

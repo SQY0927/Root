@@ -42,12 +42,14 @@ void ksu_tp_marker_dec_reg_count(void)
 
 void ksu_clear_task_tracepoint_flag_if_needed(struct task_struct *t)
 {
-    unsigned long flags;
-    spin_lock_irqsave(&tracepoint_reg_lock, flags);
-    if (tracepoint_reg_count <= 1) {
-        ksu_clear_task_tracepoint_flag(t);
-    }
-    spin_unlock_irqrestore(&tracepoint_reg_lock, flags);
+    /*
+     * Unconditionally honour policy transitions (setuid to a non-allowed uid,
+     * exec of a non-tracked binary). The old "only when reg_count <= 1" guard
+     * existed to keep other tracepoint users working; marks are no longer
+     * widened on their behalf, so holding a stale mark would only keep the
+     * process on our hot path for its whole lifetime.
+     */
+    ksu_clear_task_tracepoint_flag(t);
 }
 
 // Process marking management
@@ -104,9 +106,12 @@ void ksu_mark_running_process(void)
 {
     unsigned long flags;
     spin_lock_irqsave(&tracepoint_reg_lock, flags);
-    if (tracepoint_reg_count <= 1) {
-        ksu_mark_running_process_locked();
-    }
+    /*
+     * Always re-apply the policy, even while another syscall tracepoint user
+     * is around: marks no longer widen in that case, so skipping the refresh
+     * would silently strand newly allowed uids without a mark (dead hooks).
+     */
+    ksu_mark_running_process_locked();
     spin_unlock_irqrestore(&tracepoint_reg_lock, flags);
 }
 

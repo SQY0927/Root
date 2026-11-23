@@ -326,6 +326,12 @@
     <string name="settings_adb_root_summary">Run adbd daemon with Root privileges</string>
     <string name="settings_shell_su_adb_only">Restrict shell root to ADB</string>
     <string name="settings_shell_su_adb_only_summary">Extra check when Shell is granted root: only processes spawned by adbd or a KernelSU root process (e.g. an ADB module) can use it, preventing apps that obtain shell privileges from escalating to root</string>
+    <string name="settings_hide_kallsyms">Hide kallsyms</string>
+    <string name="settings_hide_kallsyms_summary">Drop kernel symbol lines containing KernelSU markers from /proc/kallsyms for app UIDs</string>
+    <string name="settings_spoof_uname">Spoof kernel version</string>
+    <string name="settings_spoof_uname_summary">Report the module-provided release and version strings through uname() instead of the real ones</string>
+    <string name="settings_hide_cmdline">Hide kernel cmdline</string>
+    <string name="settings_hide_cmdline_summary">Replace /proc/cmdline with the module-provided spoof string</string>
     <string name="menu_sort">Sort</string>
     <string name="sort_by_name">Application name</string>
     <string name="sort_by_package_name">Package name</string>

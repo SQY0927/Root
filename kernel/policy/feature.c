@@ -18,6 +18,9 @@ static const char *const feature_names[KSU_FEATURE_MAX] = {
     [KSU_FEATURE_ADB_ROOT] = "adb_root",
     [KSU_FEATURE_SELINUX_HIDE] = "selinux_hide",
     [KSU_FEATURE_SHELL_SU_ADB_ONLY] = "shell_su_adb_only",
+    [KSU_FEATURE_HIDE_KALLSYMS] = "hide_kallsyms",
+    [KSU_FEATURE_SPOOF_UNAME] = "spoof_uname",
+    [KSU_FEATURE_HIDE_CMDLINE] = "hide_cmdline",
 };
 
 // Features forced by boot config. Written only while parsing module params
@@ -257,7 +260,7 @@ void ksu_feature_apply_forced(void)
 
     mutex_lock(&feature_mutex);
 
-    for_each_set_bit (id, forced_pending, KSU_FEATURE_MAX) {
+    for_each_set_bit(id, forced_pending, KSU_FEATURE_MAX) {
         handler = feature_handlers[id];
         if (!handler || !handler->set_handler) {
             continue;

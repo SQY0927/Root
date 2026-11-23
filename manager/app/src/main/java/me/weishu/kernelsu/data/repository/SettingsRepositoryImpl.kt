@@ -234,6 +234,33 @@ class SettingsRepositoryImpl : SettingsRepository {
     override fun setShellSuAdbOnlyEnabled(enabled: Boolean): Boolean =
         execKsud("feature set shell_su_adb_only ${if (enabled) 1 else 0}", true)
 
+    override suspend fun getHideKallsymsStatus(): String = getFeatureStatus("hide_kallsyms")
+
+    override suspend fun getHideKallsymsPersistValue(): Long? = getFeaturePersistValue("hide_kallsyms")
+
+    override suspend fun getHideKallsymsValue(): Long? = getFeatureValue("hide_kallsyms")
+
+    override fun setHideKallsymsEnabled(enabled: Boolean): Boolean =
+        execKsud("feature set hide_kallsyms ${if (enabled) 1 else 0}", true)
+
+    override suspend fun getSpoofUnameStatus(): String = getFeatureStatus("spoof_uname")
+
+    override suspend fun getSpoofUnamePersistValue(): Long? = getFeaturePersistValue("spoof_uname")
+
+    override suspend fun getSpoofUnameValue(): Long? = getFeatureValue("spoof_uname")
+
+    override fun setSpoofUnameEnabled(enabled: Boolean): Boolean =
+        execKsud("feature set spoof_uname ${if (enabled) 1 else 0}", true)
+
+    override suspend fun getHideCmdlineStatus(): String = getFeatureStatus("hide_cmdline")
+
+    override suspend fun getHideCmdlinePersistValue(): Long? = getFeaturePersistValue("hide_cmdline")
+
+    override suspend fun getHideCmdlineValue(): Long? = getFeatureValue("hide_cmdline")
+
+    override fun setHideCmdlineEnabled(enabled: Boolean): Boolean =
+        execKsud("feature set hide_cmdline ${if (enabled) 1 else 0}", true)
+
     override fun isDefaultUmountModules(): Boolean = Natives.isDefaultUmountModules()
 
     override fun setDefaultUmountModules(enabled: Boolean): Boolean = Natives.setDefaultUmountModules(enabled)

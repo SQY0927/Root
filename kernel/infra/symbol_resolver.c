@@ -53,11 +53,93 @@ static int find_kernel_symbol_exact_cb(void *data, unsigned long addr)
 }
 #endif
 
+/*
+ * Strip the variant marker from a kallsyms name: cut at the first '$', else
+ * at ".llvm.". Returns @name when there is no marker, @buf when the base name
+ * was copied, or NULL when the base is empty or too long. This is the single
+ * suffix rule shared with ksuinit's /proc/kallsyms walk.
+ */
+static const char *ksu_symbol_normalize(const char *name, char *buf, size_t buf_size)
+{
+    const char *cut;
+    size_t len;
+
+    cut = strchr(name, '$');
+    if (!cut)
+        cut = strstr(name, ".llvm.");
+    if (!cut)
+        return name;
+    len = cut - name;
+    if (!len || len >= buf_size)
+        return NULL;
+    memcpy(buf, name, len);
+    buf[len] = '\0';
+    return buf;
+}
+
 struct ksu_lookup_symbol_ctx {
     const char *symbol_name;
     size_t symbol_len;
     void *match;
 };
+
+struct ksu_suffix_lookup_ctx {
+    const char *symbol_name;
+    char key[KSYM_NAME_LEN];
+    unsigned long addr;
+    unsigned int matches;
+};
+
+static int ksu_suffix_lookup_match(struct ksu_suffix_lookup_ctx *ctx, const char *name, unsigned long addr)
+{
+    const char *key;
+
+    if (!name || !addr)
+        return 0;
+    key = ksu_symbol_normalize(name, ctx->key, sizeof(ctx->key));
+    if (!key || strcmp(key, ctx->symbol_name) != 0)
+        return 0;
+    if (ctx->matches++ == 0)
+        ctx->addr = addr;
+    // More than one distinct hit is ambiguous: stop and reject.
+    return ctx->matches > 1;
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+static int ksu_suffix_lookup_cb(void *data, const char *name, unsigned long addr)
+{
+    return ksu_suffix_lookup_match(data, name, addr);
+}
+#else
+static int ksu_suffix_lookup_cb(void *data, const char *name, struct module *mod, unsigned long addr)
+{
+    // vmlinux symbols come first; like ksuinit, stop at module symbols.
+    if (mod)
+        return 1;
+    return ksu_suffix_lookup_match(data, name, addr);
+}
+#endif
+
+/*
+ * Fallback for names the kernel's LTO renamed to "name.llvm.<hash>" (seen on
+ * 6.12+): accept only a unique symbol whose suffix-stripped name equals
+ * @symbol_name.
+ */
+static unsigned long find_kernel_symbol_suffix_variant(const char *symbol_name)
+{
+    struct ksu_suffix_lookup_ctx ctx = {
+        .symbol_name = symbol_name,
+    };
+
+#if !ALWAYS_HAVE_ON_EACH_SYMBOL
+    if (!kallsyms_on_each_symbol_fn)
+        return 0;
+    kallsyms_on_each_symbol_fn(ksu_suffix_lookup_cb, &ctx);
+#else
+    kallsyms_on_each_symbol(ksu_suffix_lookup_cb, &ctx);
+#endif
+    return ctx.matches == 1 ? ctx.addr : 0;
+}
 
 unsigned long __nocfi find_kernel_symbol_exact(const char *symbol_name)
 {
@@ -65,6 +147,8 @@ unsigned long __nocfi find_kernel_symbol_exact(const char *symbol_name)
 #if HAVE_ON_EACH_MATCH_SYMBOL
     if (likely(kallsyms_on_each_match_symbol_fn)) {
         kallsyms_on_each_match_symbol_fn(find_kernel_symbol_exact_cb, symbol_name, &addr);
+        if (!addr)
+            addr = find_kernel_symbol_suffix_variant(symbol_name);
         return addr;
     }
 #endif
@@ -78,6 +162,8 @@ unsigned long __nocfi find_kernel_symbol_exact(const char *symbol_name)
         pr_warn("ignore symbol %s of module %s\n", symbol_name, module_name);
         return 0;
     }
+    if (!addr)
+        addr = find_kernel_symbol_suffix_variant(symbol_name);
     return addr;
 }
 
@@ -209,25 +295,16 @@ static int ksu_batch_key_cmp(const void *key, const void *elt)
 static int ksu_batch_match(struct ksu_batch_ctx *ctx, const char *name, unsigned long addr)
 {
     struct ksu_batch_entry *e, *end = ctx->entries + ctx->count;
-    const char *cut, *key = name;
-    size_t len;
+    const char *key;
 
     if (fatal_signal_pending(current))
         return -EINTR;
     if (!name || !addr)
         return 0;
 
-    cut = strchr(name, '$');
-    if (!cut)
-        cut = strstr(name, ".llvm.");
-    if (cut) {
-        len = cut - name;
-        if (!len || len >= sizeof(ctx->key))
-            return 0;
-        memcpy(ctx->key, name, len);
-        ctx->key[len] = '\0';
-        key = ctx->key;
-    }
+    key = ksu_symbol_normalize(name, ctx->key, sizeof(ctx->key));
+    if (!key)
+        return 0;
 
     e = bsearch(key, ctx->entries, ctx->count, sizeof(*e), ksu_batch_key_cmp);
     if (!e)

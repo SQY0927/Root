@@ -54,6 +54,18 @@ data class SettingsUiState(
     val shellSuAdbOnlyStatus: String = "",
     val isShellSuAdbOnlyEnabled: Boolean = false,
 
+    // Hide Kallsyms
+    val hideKallsymsStatus: String = "",
+    val isHideKallsymsEnabled: Boolean = false,
+
+    // Spoof Uname
+    val spoofUnameStatus: String = "",
+    val isSpoofUnameEnabled: Boolean = false,
+
+    // Hide Cmdline
+    val hideCmdlineStatus: String = "",
+    val isHideCmdlineEnabled: Boolean = false,
+
     val isLkmMode: Boolean = false,
     val isLateLoadMode: Boolean = false,
 
@@ -77,6 +89,9 @@ data class SettingsScreenActions(
     val onSetSulogEnabled: (Boolean) -> Unit,
     val onSetAdbRootEnabled: (Boolean) -> Unit,
     val onSetShellSuAdbOnlyEnabled: (Boolean) -> Unit,
+    val onSetHideKallsymsEnabled: (Boolean) -> Unit,
+    val onSetSpoofUnameEnabled: (Boolean) -> Unit,
+    val onSetHideCmdlineEnabled: (Boolean) -> Unit,
     val onSetDefaultUmountModules: (Boolean) -> Unit,
     val onSetEnableWebDebugging: (Boolean) -> Unit,
     val onSetAutoJailbreak: (Boolean) -> Unit,

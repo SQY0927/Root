@@ -86,6 +86,24 @@ class SettingsViewModel(
             } else {
                 repo.getShellSuAdbOnlyPersistValue() == 1L
             }
+            val hideKallsymsStatus = repo.getHideKallsymsStatus()
+            val isHideKallsymsEnabled = if (hideKallsymsStatus == "forced") {
+                repo.getHideKallsymsValue() == 1L
+            } else {
+                repo.getHideKallsymsPersistValue() == 1L
+            }
+            val spoofUnameStatus = repo.getSpoofUnameStatus()
+            val isSpoofUnameEnabled = if (spoofUnameStatus == "forced") {
+                repo.getSpoofUnameValue() == 1L
+            } else {
+                repo.getSpoofUnamePersistValue() == 1L
+            }
+            val hideCmdlineStatus = repo.getHideCmdlineStatus()
+            val isHideCmdlineEnabled = if (hideCmdlineStatus == "forced") {
+                repo.getHideCmdlineValue() == 1L
+            } else {
+                repo.getHideCmdlinePersistValue() == 1L
+            }
             val isDefaultUmountModules = repo.isDefaultUmountModules()
             val uiMode = repo.uiMode
             val autoJailbreak = repo.autoJailbreak
@@ -119,6 +137,12 @@ class SettingsViewModel(
                     isAdbRootEnabled = isAdbRootEnabled,
                     shellSuAdbOnlyStatus = shellSuAdbOnlyStatus,
                     isShellSuAdbOnlyEnabled = isShellSuAdbOnlyEnabled,
+                    hideKallsymsStatus = hideKallsymsStatus,
+                    isHideKallsymsEnabled = isHideKallsymsEnabled,
+                    spoofUnameStatus = spoofUnameStatus,
+                    isSpoofUnameEnabled = isSpoofUnameEnabled,
+                    hideCmdlineStatus = hideCmdlineStatus,
+                    isHideCmdlineEnabled = isHideCmdlineEnabled,
                     kernelUmountStatus = kernelUmountStatus,
                     isKernelUmountEnabled = isKernelUmountEnabled,
                     selinuxHideStatus = selinuxHideStatus,
@@ -353,6 +377,33 @@ class SettingsViewModel(
             if (repo.setShellSuAdbOnlyEnabled(enabled)) {
                 repo.execKsudFeatureSave()
                 _uiState.update { it.copy(isShellSuAdbOnlyEnabled = enabled) }
+            }
+        }
+    }
+
+    fun setHideKallsymsEnabled(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (repo.setHideKallsymsEnabled(enabled)) {
+                repo.execKsudFeatureSave()
+                _uiState.update { it.copy(isHideKallsymsEnabled = enabled) }
+            }
+        }
+    }
+
+    fun setSpoofUnameEnabled(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (repo.setSpoofUnameEnabled(enabled)) {
+                repo.execKsudFeatureSave()
+                _uiState.update { it.copy(isSpoofUnameEnabled = enabled) }
+            }
+        }
+    }
+
+    fun setHideCmdlineEnabled(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (repo.setHideCmdlineEnabled(enabled)) {
+                repo.execKsudFeatureSave()
+                _uiState.update { it.copy(isHideCmdlineEnabled = enabled) }
             }
         }
     }
