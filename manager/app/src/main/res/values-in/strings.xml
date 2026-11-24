@@ -99,11 +99,6 @@
     <string name="safe_mode_module_disabled">Pemasangan modul dinonaktifkan pada mode aman</string>
     <string name="reboot_to_apply">Mulai ulang untuk menerapkan</string>
     <string name="module_magisk_conflict">Modul tidak tersedia karena konflik dengan Magisk!</string>
-    <string name="home_learn_kernelsu">Pelajari TKernelSU</string>
-    <string name="home_learn_kernelsu_url">https://kernelsu.org/id_ID/guide/what-is-kernelsu.html</string>
-    <string name="home_click_to_learn_kernelsu">Pelajari cara memasang TKernelSU dan menggunakan modul</string>
-    <string name="home_support_title">Dukung Kami</string>
-    <string name="home_support_content">TKernelSU gratis dan sumber terbuka, sekarang dan selamanya. Namun, Anda dapat menunjukkan kepedulian Anda kepada kami dengan memberikan donasi.</string>
     <string name="home_gki_warning">Mulai dari v3.0.0, fungsi mode GKI dibatasi untuk lingkungan pengujian. Kami tidak menyarankan untuk penggunaan harian, dan berkas image tidak akan lagi disediakan.</string>
     <string name="about_source_code"><![CDATA[Lihat kode sumber di %1$s<br/>Gabung saluran %2$s kami]]></string>
     <string name="profile">Profil aplikasi</string>

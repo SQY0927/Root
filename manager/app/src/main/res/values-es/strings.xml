@@ -105,11 +105,6 @@
     <string name="safe_mode_module_disabled">La instalación de módulos está desactivada en modo seguro</string>
     <string name="reboot_to_apply">Reinicia para aplicar cambios</string>
     <string name="module_magisk_conflict">¡Los módulos no están disponibles debido a un conflicto con Magisk!</string>
-    <string name="home_learn_kernelsu">Aprende TKernelSU</string>
-    <string name="home_learn_kernelsu_url">https://kernelsu.org/guide/what-is-kernelsu.html</string>
-    <string name="home_click_to_learn_kernelsu">Aprende a instalar TKernelSU y a utilizar módulos</string>
-    <string name="home_support_title">Apóyanos</string>
-    <string name="home_support_content">TKernelSU es, y siempre será, gratuito y de código abierto. Sin embargo, puedes demostrarnos que te importamos haciendo una donación.</string>
     <string name="home_gki_warning">A partir de la v3.0.0, el modo de trabajo GKI solo se usará en entornos de pruebas. No lo recomendamos para el uso diario y ya no se proporcionarán archivos de imagen.</string>
     <string name="about_source_code">Ver código fuente en %1$s<br/>
 Únete a nuestro canal %2$s</string>
