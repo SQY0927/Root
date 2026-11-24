@@ -15,34 +15,10 @@ extra["androidTargetCompatibility"] = JavaVersion.VERSION_21
 extra["managerVersionCode"] = getVersionCode()
 extra["managerVersionName"] = getVersionName()
 
-fun gitOutput(vararg args: String): String? {
-    return try {
-        val process = ProcessBuilder(listOf("git") + args)
-            .redirectError(ProcessBuilder.Redirect.DISCARD)
-            .start()
-        val text = process.inputStream.bufferedReader().use { it.readText() }.trim()
-        if (process.waitFor() == 0 && text.isNotEmpty()) text else null
-    } catch (_: Exception) {
-        null
-    }
-}
+// Version: mirror the upstream KernelSU release. Upstream derives versionCode
+// as 30000 + git commit count; v3.3.1 is 30000 + 2680 = 32680. Keep it fixed so
+// builds without git metadata (CI, exported source trees) report the same
+// number instead of falling back to 0/30000.
+fun getVersionCode(): Int = 32680
 
-fun getVersionCode(): Int {
-    val envVersion = System.getenv("KSU_VERSION")?.trim()?.toIntOrNull()
-    if (envVersion != null) {
-        return envVersion
-    }
-
-    val commitCount = gitOutput("rev-list", "--count", "HEAD")?.toIntOrNull()
-    if (commitCount != null) {
-        return 30000 + commitCount
-    }
-
-    return 30000
-}
-
-fun getVersionName(): String {
-    return gitOutput("describe", "--tags", "--always")
-        ?: System.getenv("KSU_VERSION")?.trim()?.takeIf { it.isNotEmpty() }
-        ?: "30000"
-}
+fun getVersionName(): String = "Alpha1.0.0"

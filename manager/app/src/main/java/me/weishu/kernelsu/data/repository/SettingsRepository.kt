@@ -36,8 +36,11 @@ interface SettingsRepository {
     suspend fun getSuCompatPersistValue(): Long?
     fun isSuEnabled(): Boolean
     fun setSuEnabled(enabled: Boolean): Boolean
-    fun setSuCompatModePref(mode: Int)
-    fun getSuCompatModePref(): Int
+
+    suspend fun getSuCompatPathStatus(): String
+    suspend fun getSuCompatPathPersistValue(): Long?
+    suspend fun getSuCompatPathValue(): Long?
+    fun setSuCompatPathEnabled(enabled: Boolean): Boolean
 
     suspend fun getKernelUmountStatus(): String
     fun isKernelUmountEnabled(): Boolean
@@ -65,16 +68,6 @@ interface SettingsRepository {
     suspend fun getHideKallsymsPersistValue(): Long?
     suspend fun getHideKallsymsValue(): Long?
     fun setHideKallsymsEnabled(enabled: Boolean): Boolean
-
-    suspend fun getSpoofUnameStatus(): String
-    suspend fun getSpoofUnamePersistValue(): Long?
-    suspend fun getSpoofUnameValue(): Long?
-    fun setSpoofUnameEnabled(enabled: Boolean): Boolean
-
-    suspend fun getHideCmdlineStatus(): String
-    suspend fun getHideCmdlinePersistValue(): Long?
-    suspend fun getHideCmdlineValue(): Long?
-    fun setHideCmdlineEnabled(enabled: Boolean): Boolean
 
     fun isDefaultUmountModules(): Boolean
     fun setDefaultUmountModules(enabled: Boolean): Boolean

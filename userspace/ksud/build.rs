@@ -9,56 +9,15 @@ const BOOTSTRAP_SOURCE: &str = "src/lkm_image_bootstrap.S";
 const BOOTSTRAP_OBJECT: &str = "lkm_image_bootstrap.o";
 const PREPARED_BOOTSTRAP_OBJECT: &str = ".lkm_image_bootstrap.o";
 
-fn get_git_version() -> Result<(u32, String), std::io::Error> {
-    let output = Command::new("git")
-        .args(["rev-list", "--count", "HEAD"])
-        .output()?;
-
-    let output = output.stdout;
-    let version_code = String::from_utf8(output).expect("Failed to read git count stdout");
-    let version_code: u32 = version_code
-        .trim()
-        .parse()
-        .map_err(|_| std::io::Error::other("Failed to parse git count"))?;
-    let version_code = 30000 + version_code;
-
-    let version_name = String::from_utf8(
-        Command::new("git")
-            .args(["describe", "--tags", "--always"])
-            .output()?
-            .stdout,
-    )
-    .map_err(|_| std::io::Error::other("Failed to read git describe stdout"))?;
-    let version_name = version_name.trim_start_matches('v').to_string();
-    Ok((version_code, version_name))
-}
+// Version: mirror the upstream KernelSU release. Upstream derives the build
+// number as 30000 + git commit count; v3.3.1 is 30000 + 2680 = 32680. Keep it
+// fixed so builds without git metadata (CI, exported source trees) report the
+// same number instead of falling back to 0/0.0.0.
+const VERSION_CODE: u32 = 32680;
+const VERSION_NAME: &str = "Alpha1.0.0";
 
 fn get_version() -> (u32, String) {
-    let git_version = get_git_version().ok();
-    let env_version = env::var("KSU_VERSION")
-        .ok()
-        .map(|v| v.trim().to_string())
-        .filter(|v| !v.is_empty());
-
-    if git_version.is_none() && env_version.is_none() {
-        // show warning if git is not installed and no override is provided
-        println!("cargo:warning=Failed to get git version, using 0.0.0");
-    }
-
-    let code = match &env_version {
-        Some(v) => v.parse::<u32>().unwrap_or_else(|_| {
-            println!("cargo:warning=KSU_VERSION={v} is not a valid number, ignoring it");
-            git_version.as_ref().map(|(code, _)| *code).unwrap_or(0)
-        }),
-        None => git_version.as_ref().map(|(code, _)| *code).unwrap_or(0),
-    };
-
-    let name = match &git_version {
-        Some((_, name)) => name.clone(),
-        None => env_version.unwrap_or("0.0.0".to_string()),
-    };
-
-    (code, name)
+    (VERSION_CODE, VERSION_NAME.to_string())
 }
 
 fn configure_bindgen() {
@@ -253,10 +212,9 @@ fn assemble_bootstrap() {
 fn main() {
     assemble_bootstrap();
 
-    println!("cargo:rerun-if-env-changed=KSU_VERSION");
     let (code, name) = get_version();
     if env::var("KSU_PACKAGE_NAME").is_err() {
-        println!("cargo:rustc-env=KSU_PACKAGE_NAME=me.weishu.kernelsu");
+        println!("cargo:rustc-env=KSU_PACKAGE_NAME=hanasakikoi.tklsu.moe");
     }
     println!("cargo:rustc-env=VERSION_CODE={code}");
     println!("cargo:rustc-env=VERSION_NAME={name}");

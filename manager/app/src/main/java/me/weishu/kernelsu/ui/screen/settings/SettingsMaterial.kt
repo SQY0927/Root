@@ -1,5 +1,6 @@
 package me.weishu.kernelsu.ui.screen.settings
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -21,16 +22,15 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.DisplaySettings
+import androidx.compose.material.icons.filled.FindInPage
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LayersClear
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.SystemUpdateAlt
-import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
@@ -48,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -78,6 +79,7 @@ fun SettingPagerMaterial(
     val snackBarHost = remember { SnackbarHostState() }
     val showUninstallDialog = rememberSaveable { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     UninstallDialog(
         show = showUninstallDialog.value,
@@ -175,34 +177,11 @@ fun SettingPagerMaterial(
             }
 
             KsuIsValid {
-                val suCompatModeItems = listOf(
-                    stringResource(id = R.string.settings_mode_enable_by_default),
-                    stringResource(id = R.string.settings_mode_disable_until_reboot),
-                    stringResource(id = R.string.settings_mode_disable_always),
-                )
-
                 SegmentedColumn(
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 13.dp),
                     content = listOf(
                         {
-                            val suSummary = when (uiState.suCompatStatus) {
-                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
-                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
-                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
-                                else -> stringResource(id = R.string.settings_sucompat_summary)
-                            }
-                            SegmentedDropdownItem(
-                                icon = Icons.Filled.AdminPanelSettings,
-                                title = stringResource(id = R.string.settings_sucompat),
-                                summary = suSummary,
-                                items = suCompatModeItems,
-                                enabled = uiState.suCompatStatus == "supported",
-                                selectedIndex = uiState.suCompatMode,
-                                onItemSelected = actions.onSetSuCompatMode
-                            )
-                        },
-                        {
-                            val umountSummary = when (uiState.kernelUmountStatus) {
+                            val kernelUmountSummary = when (uiState.kernelUmountStatus) {
                                 "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                                 "managed" -> stringResource(id = R.string.feature_status_managed_summary)
                                 "forced" -> stringResource(id = R.string.feature_status_forced_summary)
@@ -211,9 +190,9 @@ fun SettingPagerMaterial(
                             SegmentedSwitchItem(
                                 icon = Icons.Filled.LayersClear,
                                 title = stringResource(id = R.string.settings_kernel_umount),
-                                summary = umountSummary,
-                                enabled = uiState.kernelUmountStatus == "supported",
+                                summary = kernelUmountSummary,
                                 checked = uiState.isKernelUmountEnabled,
+                                enabled = uiState.kernelUmountStatus == "supported",
                                 onCheckedChange = actions.onSetKernelUmountEnabled
                             )
                         },
@@ -228,8 +207,8 @@ fun SettingPagerMaterial(
                                 icon = Icons.Filled.Security,
                                 title = stringResource(id = R.string.settings_selinux_hide),
                                 summary = selinuxHideSummary,
-                                enabled = uiState.selinuxHideStatus == "supported",
                                 checked = uiState.isSelinuxHideEnabled,
+                                enabled = uiState.selinuxHideStatus == "supported",
                                 onCheckedChange = actions.onSetSelinuxHideEnabled
                             )
                         },
@@ -244,8 +223,8 @@ fun SettingPagerMaterial(
                                 icon = Icons.AutoMirrored.Filled.Article,
                                 title = stringResource(id = R.string.settings_sulog),
                                 summary = sulogSummary,
-                                enabled = uiState.sulogStatus == "supported",
                                 checked = uiState.isSulogEnabled,
+                                enabled = uiState.sulogStatus == "supported",
                                 onCheckedChange = actions.onSetSulogEnabled
                             )
                         },
@@ -260,8 +239,8 @@ fun SettingPagerMaterial(
                                 icon = Icons.Filled.Adb,
                                 title = stringResource(id = R.string.settings_adb_root),
                                 summary = adbRootSummary,
-                                enabled = uiState.adbRootStatus == "supported",
                                 checked = uiState.isAdbRootEnabled,
+                                enabled = uiState.adbRootStatus == "supported",
                                 onCheckedChange = actions.onSetAdbRootEnabled
                             )
                         },
@@ -276,8 +255,8 @@ fun SettingPagerMaterial(
                                 icon = Icons.Filled.VerifiedUser,
                                 title = stringResource(id = R.string.settings_shell_su_adb_only),
                                 summary = shellSuAdbOnlySummary,
-                                enabled = uiState.shellSuAdbOnlyStatus == "supported",
                                 checked = uiState.isShellSuAdbOnlyEnabled,
+                                enabled = uiState.shellSuAdbOnlyStatus == "supported",
                                 onCheckedChange = actions.onSetShellSuAdbOnlyEnabled
                             )
                         },
@@ -292,41 +271,56 @@ fun SettingPagerMaterial(
                                 icon = Icons.Filled.VisibilityOff,
                                 title = stringResource(id = R.string.settings_hide_kallsyms),
                                 summary = hideKallsymsSummary,
-                                enabled = uiState.hideKallsymsStatus == "supported",
                                 checked = uiState.isHideKallsymsEnabled,
-                                onCheckedChange = actions.onSetHideKallsymsEnabled
+                                onCheckedChange = {
+                                    if (uiState.hideKallsymsStatus == "supported") {
+                                        actions.onSetHideKallsymsEnabled(it)
+                                    } else {
+                                        Toast.makeText(context, hideKallsymsSummary, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             )
                         },
                         {
-                            val spoofUnameSummary = when (uiState.spoofUnameStatus) {
+                            val suCompatSummary = when (uiState.suCompatStatus) {
                                 "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                                 "managed" -> stringResource(id = R.string.feature_status_managed_summary)
                                 "forced" -> stringResource(id = R.string.feature_status_forced_summary)
-                                else -> stringResource(id = R.string.settings_spoof_uname_summary)
+                                else -> stringResource(id = R.string.settings_sucompat_execve_summary)
                             }
                             SegmentedSwitchItem(
-                                icon = Icons.Filled.Memory,
-                                title = stringResource(id = R.string.settings_spoof_uname),
-                                summary = spoofUnameSummary,
-                                enabled = uiState.spoofUnameStatus == "supported",
-                                checked = uiState.isSpoofUnameEnabled,
-                                onCheckedChange = actions.onSetSpoofUnameEnabled
+                                icon = Icons.Filled.AdminPanelSettings,
+                                title = stringResource(id = R.string.settings_sucompat_execve),
+                                summary = suCompatSummary,
+                                checked = uiState.isSuEnabled,
+                                onCheckedChange = {
+                                    if (uiState.suCompatStatus == "supported") {
+                                        actions.onSetSuCompatEnabled(it)
+                                    } else {
+                                        Toast.makeText(context, suCompatSummary, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             )
                         },
                         {
-                            val hideCmdlineSummary = when (uiState.hideCmdlineStatus) {
+                            val suCompatPathSummary = when (uiState.suCompatPathStatus) {
                                 "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                                 "managed" -> stringResource(id = R.string.feature_status_managed_summary)
                                 "forced" -> stringResource(id = R.string.feature_status_forced_summary)
-                                else -> stringResource(id = R.string.settings_hide_cmdline_summary)
+                                else -> stringResource(id = R.string.settings_sucompat_path_summary)
                             }
                             SegmentedSwitchItem(
-                                icon = Icons.Filled.Terminal,
-                                title = stringResource(id = R.string.settings_hide_cmdline),
-                                summary = hideCmdlineSummary,
-                                enabled = uiState.hideCmdlineStatus == "supported",
-                                checked = uiState.isHideCmdlineEnabled,
-                                onCheckedChange = actions.onSetHideCmdlineEnabled
+                                icon = Icons.Filled.FindInPage,
+                                title = stringResource(id = R.string.settings_sucompat_path),
+                                summary = suCompatPathSummary,
+                                checked = uiState.isSuCompatPathEnabled,
+                                onCheckedChange = {
+                                    if (uiState.suCompatPathStatus == "supported") {
+                                        actions.onSetSuCompatPathEnabled(it)
+                                    } else {
+                                        Toast.makeText(context, suCompatPathSummary, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             )
                         },
                         {

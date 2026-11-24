@@ -138,6 +138,28 @@ static void ksu_sys_enter_handler(void *data, struct pt_regs *regs, long id)
 }
 #endif
 
+/*
+ * sucompat path masquerade has to fake the existence of /system/bin/su for the
+ * PATH lookup a shell performs before it can ever exec it: `su` is resolved
+ * through access()/stat() on each PATH candidate, and without these two hooks
+ * the lookup fails with "not found" before execve() redirection gets a chance
+ * to run.
+ *
+ * The hooks are only registered while this feature is enabled, so a disabled
+ * feature adds no interception to any process. Register/unregister calls are
+ * idempotent, and feature updates are serialized by the feature mutex.
+ */
+void ksu_syscall_hook_sucompat_path_set(bool enable)
+{
+    if (enable) {
+        ksu_register_syscall_hook(__NR_newfstatat, ksu_hook_newfstatat);
+        ksu_register_syscall_hook(__NR_faccessat, ksu_hook_faccessat);
+    } else {
+        ksu_unregister_syscall_hook(__NR_newfstatat);
+        ksu_unregister_syscall_hook(__NR_faccessat);
+    }
+}
+
 void __init ksu_syscall_hook_manager_init(void)
 {
     int ret;
@@ -152,19 +174,8 @@ void __init ksu_syscall_hook_manager_init(void)
     ksu_register_syscall_hook(__NR_setresuid, ksu_hook_setresuid);
     ksu_register_syscall_hook(__NR_execve, ksu_hook_execve);
     ksu_register_syscall_hook(__NR_execveat, ksu_hook_execveat);
-    /*
-     * __NR_newfstatat / __NR_faccessat are deliberately NOT registered.
-     *
-     * Those two syscalls are the probe targets of the current timing
-     * side-channel detectors (faccessat vs fchownat sampled tens of
-     * thousands of times, then diffed). Anything that adds work on their
-     * entry path shows up as a measurable delta, so the legacy
-     * "access/stat /system/bin/su" emulation is dropped entirely: a `su` on
-     * this build must come from a real executable, and path-level hiding is
-     * delegated to SUSFS (open_redirect / sus_path), which works inside VFS
-     * path resolution and is therefore invisible to a probe that passes a
-     * NULL pathname.
-     */
+    // __NR_newfstatat/__NR_faccessat are registered on demand by
+    // ksu_syscall_hook_sucompat_path_set() when su_compat_path is enabled.
 
 #ifdef CONFIG_HAVE_SYSCALL_TRACEPOINTS
     ret = register_trace_prio_sys_enter(ksu_sys_enter_handler, NULL, INT_MIN);
@@ -205,6 +216,7 @@ void __exit ksu_syscall_hook_manager_exit(void)
     ksu_unregister_syscall_hook(__NR_setresuid);
     ksu_unregister_syscall_hook(__NR_execve);
     ksu_unregister_syscall_hook(__NR_execveat);
+    ksu_syscall_hook_sucompat_path_set(false);
 
     ksu_syscall_hook_exit();
 

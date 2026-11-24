@@ -23,6 +23,7 @@
 #include "feature/sucompat.h"
 #include "policy/app_profile.h"
 #include "hook/syscall_hook.h"
+#include "hook/syscall_hook_manager.h"
 #include "supercall/supercall.h"
 #include "sulog/event.h"
 #include "ksu.h"
@@ -52,6 +53,48 @@ static const struct ksu_feature_handler su_compat_handler = {
     .name = "su_compat",
     .get_handler = su_compat_feature_get,
     .set_handler = su_compat_feature_set,
+};
+
+/*
+ * Path masquerade is a separate toggle from execve redirection: it rewrites
+ * stat()/faccessat() for /system/bin/su so a PATH lookup finds it. It is off by
+ * default and its syscall hooks are only registered while it is enabled, so a
+ * disabled feature adds no interception to any process.
+ */
+bool ksu_su_compat_path_enabled __read_mostly;
+
+static int su_compat_path_feature_get(u64 *value)
+{
+    *value = ksu_su_compat_path_enabled ? 1 : 0;
+    return 0;
+}
+
+static int su_compat_path_feature_set(u64 value)
+{
+    bool enable = value != 0;
+
+    if (enable == READ_ONCE(ksu_su_compat_path_enabled))
+        return 0;
+
+    if (enable) {
+        /* Register first: the hook skips work until the flag below is set. */
+        ksu_syscall_hook_sucompat_path_set(true);
+        WRITE_ONCE(ksu_su_compat_path_enabled, true);
+    } else {
+        /* Clear the flag first so an in-flight hook falls back to the vfs. */
+        WRITE_ONCE(ksu_su_compat_path_enabled, false);
+        ksu_syscall_hook_sucompat_path_set(false);
+    }
+
+    pr_info("su_compat_path: set to %d\n", enable);
+    return 0;
+}
+
+static const struct ksu_feature_handler su_compat_path_handler = {
+    .feature_id = KSU_FEATURE_SU_COMPAT_PATH,
+    .name = "su_compat_path",
+    .get_handler = su_compat_path_feature_get,
+    .set_handler = su_compat_path_feature_set,
 };
 
 static char __user *ksud_user_path(void)
@@ -93,7 +136,9 @@ long ksu_handle_faccessat_sucompat(int orig_nr, struct pt_regs *regs)
 
     char path[sizeof(su_path) + 1];
     memset(path, 0, sizeof(path));
-    strncpy_from_user_nofault(path, *filename_user, sizeof(path));
+    strncpy_from_user_nofault(path,
+                              (const char __user *)untagged_addr((unsigned long)*filename_user),
+                              sizeof(path));
 
     if (unlikely(!memcmp(path, su_path, sizeof(su_path)))) {
         old_cred = override_creds(ksu_cred);
@@ -128,7 +173,9 @@ long ksu_handle_stat_sucompat(int orig_nr, struct pt_regs *regs)
 
     char path[sizeof(su_path) + 1];
     memset(path, 0, sizeof(path));
-    strncpy_from_user_nofault(path, *filename_user, sizeof(path));
+    strncpy_from_user_nofault(path,
+                              (const char __user *)untagged_addr((unsigned long)*filename_user),
+                              sizeof(path));
 
     if (unlikely(!memcmp(path, su_path, sizeof(su_path)))) {
         old_cred = override_creds(ksu_cred);
@@ -265,9 +312,13 @@ void __init ksu_sucompat_init()
     if (ksu_register_feature_handler(&su_compat_handler)) {
         pr_err("Failed to register su_compat feature handler\n");
     }
+    if (ksu_register_feature_handler(&su_compat_path_handler)) {
+        pr_err("Failed to register su_compat_path feature handler\n");
+    }
 }
 
 void __exit ksu_sucompat_exit()
 {
+    ksu_unregister_feature_handler(KSU_FEATURE_SU_COMPAT_PATH);
     ksu_unregister_feature_handler(KSU_FEATURE_SU_COMPAT);
 }

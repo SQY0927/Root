@@ -187,9 +187,14 @@ class SettingsRepositoryImpl : SettingsRepository {
 
     override fun setSuEnabled(enabled: Boolean): Boolean = Natives.setSuEnabled(enabled)
 
-    override fun setSuCompatModePref(mode: Int) = prefs.edit { putInt("su_compat_mode", mode) }
+    override suspend fun getSuCompatPathStatus(): String = getFeatureStatus("su_compat_path")
 
-    override fun getSuCompatModePref(): Int = prefs.getInt("su_compat_mode", 0)
+    override suspend fun getSuCompatPathPersistValue(): Long? = getFeaturePersistValue("su_compat_path")
+
+    override suspend fun getSuCompatPathValue(): Long? = getFeatureValue("su_compat_path")
+
+    override fun setSuCompatPathEnabled(enabled: Boolean): Boolean =
+        execKsud("feature set su_compat_path ${if (enabled) 1 else 0}", true)
 
     override suspend fun getKernelUmountStatus(): String = getFeatureStatus("kernel_umount")
 
@@ -242,24 +247,6 @@ class SettingsRepositoryImpl : SettingsRepository {
 
     override fun setHideKallsymsEnabled(enabled: Boolean): Boolean =
         execKsud("feature set hide_kallsyms ${if (enabled) 1 else 0}", true)
-
-    override suspend fun getSpoofUnameStatus(): String = getFeatureStatus("spoof_uname")
-
-    override suspend fun getSpoofUnamePersistValue(): Long? = getFeaturePersistValue("spoof_uname")
-
-    override suspend fun getSpoofUnameValue(): Long? = getFeatureValue("spoof_uname")
-
-    override fun setSpoofUnameEnabled(enabled: Boolean): Boolean =
-        execKsud("feature set spoof_uname ${if (enabled) 1 else 0}", true)
-
-    override suspend fun getHideCmdlineStatus(): String = getFeatureStatus("hide_cmdline")
-
-    override suspend fun getHideCmdlinePersistValue(): Long? = getFeaturePersistValue("hide_cmdline")
-
-    override suspend fun getHideCmdlineValue(): Long? = getFeatureValue("hide_cmdline")
-
-    override fun setHideCmdlineEnabled(enabled: Boolean): Boolean =
-        execKsud("feature set hide_cmdline ${if (enabled) 1 else 0}", true)
 
     override fun isDefaultUmountModules(): Boolean = Natives.isDefaultUmountModules()
 

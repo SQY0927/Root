@@ -29,9 +29,7 @@
 #include "infra/symbol_resolver.h"
 #include "preinit/preinit.h"
 // ---- 新增头文件 ----
-#include "feature/spoof_uname.h"
 #include "feature/hide_kallsyms.h"
-#include "feature/hide_cmdline.h"
 
 #if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER)
 #include <asm/cpufeature.h>
@@ -161,11 +159,9 @@ int __init kernelsu_init(void)
     ksu_shell_su_adb_only_init();
 
     // ---- 新增：隐藏特性初始化 ----
-    // 注意：hide_kallsyms / hide_cmdline 依赖符号解析，
+    // 注意：hide_kallsyms 依赖符号解析，
     // 必须在 ksu_init_symbol_resolver() 之后调用
-    ksu_spoof_uname_init();
     ksu_hide_kallsyms_init();
-    ksu_hide_cmdline_init();
 
     ksu_supercalls_init();
     ksu_app_profile_init();
@@ -246,9 +242,7 @@ void __exit kernelsu_exit(void)
     ksu_allowlist_exit();
 
     // ---- 新增：隐藏特性清理（逆序）----
-    ksu_hide_cmdline_exit();
     ksu_hide_kallsyms_exit();
-    ksu_spoof_uname_exit();
 
     ksu_shell_su_adb_only_exit();
     ksu_selinux_hide_exit();

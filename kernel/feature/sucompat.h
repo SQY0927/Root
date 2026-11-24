@@ -4,6 +4,7 @@
 #include <linux/types.h>
 
 extern bool ksu_su_compat_enabled;
+extern bool ksu_su_compat_path_enabled;
 
 void ksu_sucompat_init(void);
 void ksu_sucompat_exit(void);

@@ -28,8 +28,11 @@ data class SettingsUiState(
 
     // Su Compat
     val suCompatStatus: String = "",
-    val suCompatMode: Int = 0, // 0: enable default, 1: disable until reboot, 2: disable always
     val isSuEnabled: Boolean = false,
+
+    // Su Compat Path (stat/access masquerade)
+    val suCompatPathStatus: String = "",
+    val isSuCompatPathEnabled: Boolean = false,
 
     // Kernel Umount
     val kernelUmountStatus: String = "",
@@ -58,14 +61,6 @@ data class SettingsUiState(
     val hideKallsymsStatus: String = "",
     val isHideKallsymsEnabled: Boolean = false,
 
-    // Spoof Uname
-    val spoofUnameStatus: String = "",
-    val isSpoofUnameEnabled: Boolean = false,
-
-    // Hide Cmdline
-    val hideCmdlineStatus: String = "",
-    val isHideCmdlineEnabled: Boolean = false,
-
     val isLkmMode: Boolean = false,
     val isLateLoadMode: Boolean = false,
 
@@ -83,15 +78,14 @@ data class SettingsScreenActions(
     val onOpenTheme: () -> Unit,
     val onSetUiModeIndex: (Int) -> Unit,
     val onOpenProfileTemplate: () -> Unit,
-    val onSetSuCompatMode: (Int) -> Unit,
+    val onSetSuCompatEnabled: (Boolean) -> Unit,
+    val onSetSuCompatPathEnabled: (Boolean) -> Unit,
     val onSetKernelUmountEnabled: (Boolean) -> Unit,
     val onSetSelinuxHideEnabled: (Boolean) -> Unit,
     val onSetSulogEnabled: (Boolean) -> Unit,
     val onSetAdbRootEnabled: (Boolean) -> Unit,
     val onSetShellSuAdbOnlyEnabled: (Boolean) -> Unit,
     val onSetHideKallsymsEnabled: (Boolean) -> Unit,
-    val onSetSpoofUnameEnabled: (Boolean) -> Unit,
-    val onSetHideCmdlineEnabled: (Boolean) -> Unit,
     val onSetDefaultUmountModules: (Boolean) -> Unit,
     val onSetEnableWebDebugging: (Boolean) -> Unit,
     val onSetAutoJailbreak: (Boolean) -> Unit,

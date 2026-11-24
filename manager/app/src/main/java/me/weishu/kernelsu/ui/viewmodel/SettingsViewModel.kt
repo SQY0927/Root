@@ -53,15 +53,17 @@ class SettingsViewModel(
 
             // Async loading for natives/features
             val suCompatStatus = repo.getSuCompatStatus()
-            val suCompatPersistValue = repo.getSuCompatPersistValue()
-            val isSuEnabled = repo.isSuEnabled()
-
-            // Forced features show the value in effect, the persisted one is ignored
-            val suCompatMode = when {
-                suCompatStatus == "forced" -> if (isSuEnabled) 0 else 2
-                suCompatPersistValue == 0L -> 2
-                !isSuEnabled -> 1
-                else -> 0
+            val isSuEnabled = if (suCompatStatus == "forced") {
+                repo.isSuEnabled()
+            } else {
+                // Kernel default is enabled; a missing persisted value means "on".
+                repo.getSuCompatPersistValue() != 0L
+            }
+            val suCompatPathStatus = repo.getSuCompatPathStatus()
+            val isSuCompatPathEnabled = if (suCompatPathStatus == "forced") {
+                repo.getSuCompatPathValue() == 1L
+            } else {
+                repo.getSuCompatPathPersistValue() == 1L
             }
 
             val kernelUmountStatus = repo.getKernelUmountStatus()
@@ -92,18 +94,6 @@ class SettingsViewModel(
             } else {
                 repo.getHideKallsymsPersistValue() == 1L
             }
-            val spoofUnameStatus = repo.getSpoofUnameStatus()
-            val isSpoofUnameEnabled = if (spoofUnameStatus == "forced") {
-                repo.getSpoofUnameValue() == 1L
-            } else {
-                repo.getSpoofUnamePersistValue() == 1L
-            }
-            val hideCmdlineStatus = repo.getHideCmdlineStatus()
-            val isHideCmdlineEnabled = if (hideCmdlineStatus == "forced") {
-                repo.getHideCmdlineValue() == 1L
-            } else {
-                repo.getHideCmdlinePersistValue() == 1L
-            }
             val isDefaultUmountModules = repo.isDefaultUmountModules()
             val uiMode = repo.uiMode
             val autoJailbreak = repo.autoJailbreak
@@ -131,18 +121,15 @@ class SettingsViewModel(
                     colorStyle = colorStyle,
                     colorSpec = colorSpec,
                     suCompatStatus = suCompatStatus,
-                    suCompatMode = suCompatMode,
                     isSuEnabled = isSuEnabled,
+                    suCompatPathStatus = suCompatPathStatus,
+                    isSuCompatPathEnabled = isSuCompatPathEnabled,
                     adbRootStatus = adbRootStatus,
                     isAdbRootEnabled = isAdbRootEnabled,
                     shellSuAdbOnlyStatus = shellSuAdbOnlyStatus,
                     isShellSuAdbOnlyEnabled = isShellSuAdbOnlyEnabled,
                     hideKallsymsStatus = hideKallsymsStatus,
                     isHideKallsymsEnabled = isHideKallsymsEnabled,
-                    spoofUnameStatus = spoofUnameStatus,
-                    isSpoofUnameEnabled = isSpoofUnameEnabled,
-                    hideCmdlineStatus = hideCmdlineStatus,
-                    isHideCmdlineEnabled = isHideCmdlineEnabled,
                     kernelUmountStatus = kernelUmountStatus,
                     isKernelUmountEnabled = isKernelUmountEnabled,
                     selinuxHideStatus = selinuxHideStatus,
@@ -293,30 +280,20 @@ class SettingsViewModel(
         _uiState.update { it.copy(enableWebDebugging = enabled) }
     }
 
-    fun setSuCompatMode(mode: Int) {
+    fun setSuCompatEnabled(enabled: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
-            when (mode) {
-                0 -> if (repo.setSuEnabled(true)) {
-                    repo.execKsudFeatureSave()
-                    repo.setSuCompatModePref(0)
-                    _uiState.update { it.copy(suCompatMode = 0, isSuEnabled = true) }
-                }
+            if (repo.setSuEnabled(enabled)) {
+                repo.execKsudFeatureSave()
+                _uiState.update { it.copy(isSuEnabled = enabled) }
+            }
+        }
+    }
 
-                1 -> if (repo.setSuEnabled(true)) {
-                    repo.execKsudFeatureSave()
-                    if (repo.setSuEnabled(false)) {
-                        // "Disable until reboot" implies it should be enabled on next boot.
-                        // We set the preference to 0 (Enabled) to match the persistent state.
-                        repo.setSuCompatModePref(0)
-                        _uiState.update { it.copy(suCompatMode = 1, isSuEnabled = false) }
-                    }
-                }
-
-                2 -> if (repo.setSuEnabled(false)) {
-                    repo.execKsudFeatureSave()
-                    repo.setSuCompatModePref(2)
-                    _uiState.update { it.copy(suCompatMode = 2, isSuEnabled = false) }
-                }
+    fun setSuCompatPathEnabled(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (repo.setSuCompatPathEnabled(enabled)) {
+                repo.execKsudFeatureSave()
+                _uiState.update { it.copy(isSuCompatPathEnabled = enabled) }
             }
         }
     }
@@ -386,24 +363,6 @@ class SettingsViewModel(
             if (repo.setHideKallsymsEnabled(enabled)) {
                 repo.execKsudFeatureSave()
                 _uiState.update { it.copy(isHideKallsymsEnabled = enabled) }
-            }
-        }
-    }
-
-    fun setSpoofUnameEnabled(enabled: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (repo.setSpoofUnameEnabled(enabled)) {
-                repo.execKsudFeatureSave()
-                _uiState.update { it.copy(isSpoofUnameEnabled = enabled) }
-            }
-        }
-    }
-
-    fun setHideCmdlineEnabled(enabled: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (repo.setHideCmdlineEnabled(enabled)) {
-                repo.execKsudFeatureSave()
-                _uiState.update { it.copy(isHideCmdlineEnabled = enabled) }
             }
         }
     }

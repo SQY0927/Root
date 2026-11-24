@@ -1,5 +1,6 @@
 package me.weishu.kernelsu.ui.screen.settings
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -23,16 +24,15 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.DeveloperMode
 import androidx.compose.material.icons.rounded.DisplaySettings
+import androidx.compose.material.icons.rounded.FindInPage
 import androidx.compose.material.icons.rounded.FlashOn
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LayersClear
-import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
-import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.runtime.Composable
@@ -41,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -84,6 +85,7 @@ fun SettingPagerMiuix(
     val loadingDialog = rememberLoadingDialog()
     val showUninstallDialog = rememberSaveable { mutableStateOf(false) }
     val showSendLogDialog = rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -211,36 +213,7 @@ fun SettingPagerMiuix(
                                 .padding(top = 12.dp)
                                 .fillMaxWidth(),
                         ) {
-                            val suCompatModeItems = listOf(
-                                stringResource(id = R.string.settings_mode_enable_by_default),
-                                stringResource(id = R.string.settings_mode_disable_until_reboot),
-                                stringResource(id = R.string.settings_mode_disable_always),
-                            )
-
-                            val suSummary = when (uiState.suCompatStatus) {
-                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
-                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
-                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
-                                else -> stringResource(id = R.string.settings_sucompat_summary)
-                            }
-                            OverlayDropdownPreference(
-                                title = stringResource(id = R.string.settings_sucompat),
-                                summary = suSummary,
-                                items = suCompatModeItems,
-                                startAction = {
-                                    Icon(
-                                        Icons.Rounded.AdminPanelSettings,
-                                        modifier = Modifier.padding(end = 6.dp),
-                                        contentDescription = stringResource(id = R.string.settings_sucompat),
-                                        tint = colorScheme.onBackground
-                                    )
-                                },
-                                enabled = uiState.suCompatStatus == "supported",
-                                selectedIndex = uiState.suCompatMode,
-                                onSelectedIndexChange = actions.onSetSuCompatMode
-                            )
-
-                            val umountSummary = when (uiState.kernelUmountStatus) {
+                            val kernelUmountSummary = when (uiState.kernelUmountStatus) {
                                 "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                                 "managed" -> stringResource(id = R.string.feature_status_managed_summary)
                                 "forced" -> stringResource(id = R.string.feature_status_forced_summary)
@@ -248,7 +221,7 @@ fun SettingPagerMiuix(
                             }
                             SwitchPreference(
                                 title = stringResource(id = R.string.settings_kernel_umount),
-                                summary = umountSummary,
+                                summary = kernelUmountSummary,
                                 startAction = {
                                     Icon(
                                         Icons.Rounded.LayersClear,
@@ -257,8 +230,8 @@ fun SettingPagerMiuix(
                                         tint = colorScheme.onBackground
                                     )
                                 },
-                                enabled = uiState.kernelUmountStatus == "supported",
                                 checked = uiState.isKernelUmountEnabled,
+                                enabled = uiState.kernelUmountStatus == "supported",
                                 onCheckedChange = actions.onSetKernelUmountEnabled
                             )
 
@@ -279,8 +252,8 @@ fun SettingPagerMiuix(
                                         tint = colorScheme.onBackground
                                     )
                                 },
-                                enabled = uiState.selinuxHideStatus == "supported",
                                 checked = uiState.isSelinuxHideEnabled,
+                                enabled = uiState.selinuxHideStatus == "supported",
                                 onCheckedChange = actions.onSetSelinuxHideEnabled
                             )
 
@@ -298,11 +271,11 @@ fun SettingPagerMiuix(
                                         Icons.AutoMirrored.Rounded.Article,
                                         modifier = Modifier.padding(end = 6.dp),
                                         contentDescription = stringResource(id = R.string.settings_sulog),
-                                        tint = if (uiState.sulogStatus == "supported") colorScheme.onBackground else colorScheme.disabledOnSecondaryVariant
+                                        tint = colorScheme.onBackground
                                     )
                                 },
-                                enabled = uiState.sulogStatus == "supported",
                                 checked = uiState.isSulogEnabled,
+                                enabled = uiState.sulogStatus == "supported",
                                 onCheckedChange = actions.onSetSulogEnabled
                             )
 
@@ -323,8 +296,8 @@ fun SettingPagerMiuix(
                                         tint = colorScheme.onBackground
                                     )
                                 },
-                                enabled = uiState.adbRootStatus == "supported",
                                 checked = uiState.isAdbRootEnabled,
+                                enabled = uiState.adbRootStatus == "supported",
                                 onCheckedChange = actions.onSetAdbRootEnabled
                             )
 
@@ -342,13 +315,14 @@ fun SettingPagerMiuix(
                                         Icons.Rounded.VerifiedUser,
                                         modifier = Modifier.padding(end = 6.dp),
                                         contentDescription = stringResource(id = R.string.settings_shell_su_adb_only),
-                                        tint = if (uiState.shellSuAdbOnlyStatus == "supported") colorScheme.onBackground else colorScheme.disabledOnSecondaryVariant
+                                        tint = colorScheme.onBackground
                                     )
                                 },
-                                enabled = uiState.shellSuAdbOnlyStatus == "supported",
                                 checked = uiState.isShellSuAdbOnlyEnabled,
+                                enabled = uiState.shellSuAdbOnlyStatus == "supported",
                                 onCheckedChange = actions.onSetShellSuAdbOnlyEnabled
                             )
+
                             val hideKallsymsSummary = when (uiState.hideKallsymsStatus) {
                                 "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                                 "managed" -> stringResource(id = R.string.feature_status_managed_summary)
@@ -363,57 +337,73 @@ fun SettingPagerMiuix(
                                         Icons.Rounded.VisibilityOff,
                                         modifier = Modifier.padding(end = 6.dp),
                                         contentDescription = stringResource(id = R.string.settings_hide_kallsyms),
-                                        tint = if (uiState.hideKallsymsStatus == "supported") colorScheme.onBackground else colorScheme.disabledOnSecondaryVariant
+                                        tint = colorScheme.onBackground
                                     )
                                 },
-                                enabled = uiState.hideKallsymsStatus == "supported",
                                 checked = uiState.isHideKallsymsEnabled,
-                                onCheckedChange = actions.onSetHideKallsymsEnabled
+                                onCheckedChange = {
+                                    if (uiState.hideKallsymsStatus == "supported") {
+                                        actions.onSetHideKallsymsEnabled(it)
+                                    } else {
+                                        Toast.makeText(context, hideKallsymsSummary, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             )
 
-                            val spoofUnameSummary = when (uiState.spoofUnameStatus) {
+                            val suCompatSummary = when (uiState.suCompatStatus) {
                                 "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                                 "managed" -> stringResource(id = R.string.feature_status_managed_summary)
                                 "forced" -> stringResource(id = R.string.feature_status_forced_summary)
-                                else -> stringResource(id = R.string.settings_spoof_uname_summary)
+                                else -> stringResource(id = R.string.settings_sucompat_execve_summary)
                             }
                             SwitchPreference(
-                                title = stringResource(id = R.string.settings_spoof_uname),
-                                summary = spoofUnameSummary,
+                                title = stringResource(id = R.string.settings_sucompat_execve),
+                                summary = suCompatSummary,
                                 startAction = {
                                     Icon(
-                                        Icons.Rounded.Memory,
+                                        Icons.Rounded.AdminPanelSettings,
                                         modifier = Modifier.padding(end = 6.dp),
-                                        contentDescription = stringResource(id = R.string.settings_spoof_uname),
-                                        tint = if (uiState.spoofUnameStatus == "supported") colorScheme.onBackground else colorScheme.disabledOnSecondaryVariant
+                                        contentDescription = stringResource(id = R.string.settings_sucompat_execve),
+                                        tint = colorScheme.onBackground
                                     )
                                 },
-                                enabled = uiState.spoofUnameStatus == "supported",
-                                checked = uiState.isSpoofUnameEnabled,
-                                onCheckedChange = actions.onSetSpoofUnameEnabled
+                                checked = uiState.isSuEnabled,
+                                onCheckedChange = {
+                                    if (uiState.suCompatStatus == "supported") {
+                                        actions.onSetSuCompatEnabled(it)
+                                    } else {
+                                        Toast.makeText(context, suCompatSummary, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             )
 
-                            val hideCmdlineSummary = when (uiState.hideCmdlineStatus) {
+                            val suCompatPathSummary = when (uiState.suCompatPathStatus) {
                                 "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                                 "managed" -> stringResource(id = R.string.feature_status_managed_summary)
                                 "forced" -> stringResource(id = R.string.feature_status_forced_summary)
-                                else -> stringResource(id = R.string.settings_hide_cmdline_summary)
+                                else -> stringResource(id = R.string.settings_sucompat_path_summary)
                             }
                             SwitchPreference(
-                                title = stringResource(id = R.string.settings_hide_cmdline),
-                                summary = hideCmdlineSummary,
+                                title = stringResource(id = R.string.settings_sucompat_path),
+                                summary = suCompatPathSummary,
                                 startAction = {
                                     Icon(
-                                        Icons.Rounded.Terminal,
+                                        Icons.Rounded.FindInPage,
                                         modifier = Modifier.padding(end = 6.dp),
-                                        contentDescription = stringResource(id = R.string.settings_hide_cmdline),
-                                        tint = if (uiState.hideCmdlineStatus == "supported") colorScheme.onBackground else colorScheme.disabledOnSecondaryVariant
+                                        contentDescription = stringResource(id = R.string.settings_sucompat_path),
+                                        tint = colorScheme.onBackground
                                     )
                                 },
-                                enabled = uiState.hideCmdlineStatus == "supported",
-                                checked = uiState.isHideCmdlineEnabled,
-                                onCheckedChange = actions.onSetHideCmdlineEnabled
+                                checked = uiState.isSuCompatPathEnabled,
+                                onCheckedChange = {
+                                    if (uiState.suCompatPathStatus == "supported") {
+                                        actions.onSetSuCompatPathEnabled(it)
+                                    } else {
+                                        Toast.makeText(context, suCompatPathSummary, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             )
+
                             SwitchPreference(
                                 title = stringResource(id = R.string.settings_soft_reboot),
                                 summary = stringResource(id = R.string.settings_soft_reboot_summary),
