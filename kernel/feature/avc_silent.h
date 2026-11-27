@@ -1,6 +1,7 @@
 #ifndef __KSU_AVC_SILENT_H
 #define __KSU_AVC_SILENT_H
 
+#include <linux/init.h>
 #include <linux/types.h>
 
 void __init ksu_avc_silent_init(void);

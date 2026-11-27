@@ -1,14 +1,19 @@
+#include <linux/cache.h>
+#include <linux/compiler.h>
 #include <linux/cred.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/kprobes.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
+#include <linux/printk.h>
 #include <linux/ptrace.h>
 #include <linux/security.h>
 #include <linux/string.h>
 #include <linux/types.h>
 
 #include "arch.h"
+#include <security.h>
 #include "avc.h"
 #include "feature/avc_silent.h"
 #include "klog.h" // IWYU pragma: keep
