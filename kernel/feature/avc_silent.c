@@ -16,6 +16,8 @@
 #include "arch.h"
 #include <security.h>
 #include "avc.h"
+/* current_sid() 在 security/selinux/include/objsec.h（5.10 与 6.1 一致） */
+#include "objsec.h"
 #include "feature/avc_silent.h"
 #include "infra/symbol_resolver.h"
 #include "klog.h" // IWYU pragma: keep
