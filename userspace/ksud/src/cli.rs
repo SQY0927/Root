@@ -35,7 +35,7 @@ enum Commands {
     /// Trigger `service` event
     Services,
 
-    /// Run sulog reader daemon. Not for user. Use `ksud debug sulogd` to launch daemon.
+    /// Run one sulog drain pass and exit. Not for user.
     #[command(hide = true)]
     Sulogd,
 
@@ -222,7 +222,7 @@ enum Debug {
         command: MarkCommand,
     },
 
-    /// Launch sulogd daemon manually
+    /// Run one sulog drain pass and exit
     Sulogd,
 
     /// Get kernel info

@@ -1,4 +1,5 @@
 #include "feature/selinux_hide.h"
+#include "feature/avc_silent.h"
 #include <linux/rcupdate.h>
 #include <linux/slab.h>
 #include <linux/mm.h>
@@ -171,6 +172,7 @@ void ksu_handle_execveat_ksud(const char *path, struct user_arg_ptr *argv)
             setup_ksu_cred();
             // after apply_kernelsu_rules, so that selinux_hide has its sepolicy backup
             ksu_feature_apply_forced();
+            ksu_avc_silent_late_init();
             init_second_stage_executed = true;
         }
     }

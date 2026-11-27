@@ -6,19 +6,14 @@ use std::io::{self, ErrorKind, LineWriter, Write};
 use std::mem::size_of;
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
-use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::thread;
-use std::time::Duration;
 
-use crate::{defs, ksucalls, module_config, utils};
+use crate::{defs, ksucalls, module_config};
 
 const KSU_EVENT_QUEUE_TYPE_DROPPED: u16 = u16::MAX;
 const KSU_EVENT_RECORD_FLAG_INTERNAL: u16 = 1;
 const TASK_COMM_LEN: usize = 16;
 const READ_BUF_SIZE: usize = 8192;
-const SULOGD_RESTART_DELAY: Duration = Duration::from_secs(3);
 const SULOG_DIR_MODE: u32 = 0o700;
 const SULOG_FILE_MODE: u32 = 0o600;
 pub const SULOG_CONFIG_MODULE_ID: &str = "internal.ksud.sulogd";
@@ -79,11 +74,6 @@ struct SulogEvent {
 enum ReadState {
     Drained,
     Closed,
-}
-
-enum SessionExitReason {
-    FdClosed,
-    EpollHangup,
 }
 
 struct SulogdLockGuard {
@@ -649,153 +639,33 @@ pub fn open_sulog_fd() -> Result<OwnedFd> {
     Ok(fd)
 }
 
-fn write_session_marker(
-    writer: &mut DailyLogWriter,
-    boot_id: &str,
-    restart_count: u64,
-) -> Result<()> {
-    let line = if restart_count == 0 {
-        format!("type=daemon_start boot_id=\"{}\"", escape_field(boot_id))
-    } else {
-        format!(
-            "type=daemon_restart boot_id=\"{}\" restart={restart_count}",
-            escape_field(boot_id)
-        )
-    };
+fn write_session_marker(writer: &mut DailyLogWriter, boot_id: &str) -> Result<()> {
+    let line = format!("type=daemon_start boot_id=\"{}\"", escape_field(boot_id));
     write_log_line(writer, &line).context("failed to write sulogd session marker")
 }
 
-fn run_sulog_session(restart_count: u64) -> Result<SessionExitReason> {
+/// 一次性把当前队列读空并落盘，随后立即返回；不 fork/daemonize，也不保留常驻循环。
+pub fn run_sulogd() -> Result<()> {
+    let Some(_lock_guard) = SulogdLockGuard::acquire()? else {
+        log::info!("sulogd lock is held, skipping drain");
+        return Ok(());
+    };
+
     let sulog_fd = open_sulog_fd().context("failed to open sulog fd")?;
     let mut writer = DailyLogWriter::open()?;
     let boot_id = read_boot_id()?;
 
-    let epoll_raw = unsafe { libc::epoll_create1(libc::EPOLL_CLOEXEC) };
-    if epoll_raw < 0 {
-        bail!("failed to create epoll fd: {}", io::Error::last_os_error());
-    }
-    let epoll_fd = unsafe { OwnedFd::from_raw_fd(epoll_raw) };
+    write_session_marker(&mut writer, &boot_id)?;
+    log::info!("sulogd one-shot drain started, boot_id={boot_id}");
 
-    let mut event = libc::epoll_event {
-        events: u32::try_from(libc::EPOLLIN | libc::EPOLLERR | libc::EPOLLHUP)
-            .context("invalid epoll event mask")?,
-        u64: u64::try_from(sulog_fd.as_raw_fd()).context("invalid sulog fd")?,
-    };
-    let ctl_ret = unsafe {
-        libc::epoll_ctl(
-            epoll_fd.as_raw_fd(),
-            libc::EPOLL_CTL_ADD,
-            sulog_fd.as_raw_fd(),
-            &raw mut event,
-        )
-    };
-    if ctl_ret < 0 {
-        bail!(
-            "failed to register sulog fd to epoll: {}",
-            io::Error::last_os_error()
-        );
+    match handle_readable(sulog_fd.as_raw_fd(), &mut writer)? {
+        ReadState::Drained | ReadState::Closed => {}
     }
 
-    log::info!("sulogd session started, boot_id={boot_id}, restart={restart_count}");
-    write_session_marker(&mut writer, &boot_id, restart_count)?;
-
-    let mut events = [libc::epoll_event { events: 0, u64: 0 }; 4];
-    loop {
-        let ready = unsafe {
-            libc::epoll_wait(
-                epoll_fd.as_raw_fd(),
-                events.as_mut_ptr(),
-                i32::try_from(events.len()).context("too many epoll events")?,
-                -1,
-            )
-        };
-        if ready < 0 {
-            let err = io::Error::last_os_error();
-            if err.raw_os_error() == Some(libc::EINTR) {
-                continue;
-            }
-            return Err(err).context("epoll_wait failed for sulogd");
-        }
-
-        let ready = usize::try_from(ready).context("invalid epoll ready count")?;
-        for ready_event in &events[..ready] {
-            let event_mask = ready_event.events;
-            if event_mask & u32::try_from(libc::EPOLLIN).context("invalid EPOLLIN")? != 0 {
-                match handle_readable(sulog_fd.as_raw_fd(), &mut writer)? {
-                    ReadState::Drained => {}
-                    ReadState::Closed => {
-                        log::warn!("sulog fd closed");
-                        return Ok(SessionExitReason::FdClosed);
-                    }
-                }
-            }
-
-            let hup_mask =
-                u32::try_from(libc::EPOLLERR | libc::EPOLLHUP).context("invalid EPOLLHUP mask")?;
-            if event_mask & hup_mask != 0 {
-                match handle_readable(sulog_fd.as_raw_fd(), &mut writer)? {
-                    ReadState::Drained | ReadState::Closed => {}
-                }
-                log::warn!("sulog epoll hangup");
-                return Ok(SessionExitReason::EpollHangup);
-            }
-        }
-    }
-}
-
-pub fn run_sulogd() -> Result<()> {
-    let Some(_lock_guard) = SulogdLockGuard::acquire()? else {
-        log::info!("sulogd lock is held, skipping start");
-        return Ok(());
-    };
-
-    let mut restart_count = 0u64;
-    loop {
-        match run_sulog_session(restart_count) {
-            Ok(SessionExitReason::FdClosed) => {
-                log::warn!(
-                    "restarting sulogd session after fd close in {}s",
-                    SULOGD_RESTART_DELAY.as_secs()
-                );
-            }
-            Ok(SessionExitReason::EpollHangup) => {
-                log::warn!(
-                    "restarting sulogd session after hangup in {}s",
-                    SULOGD_RESTART_DELAY.as_secs()
-                );
-            }
-            Err(err) => {
-                log::warn!(
-                    "sulogd session failed: {err:#}; restarting in {}s",
-                    SULOGD_RESTART_DELAY.as_secs()
-                );
-            }
-        }
-
-        restart_count = restart_count.saturating_add(1);
-        thread::sleep(SULOGD_RESTART_DELAY);
-    }
-}
-
-pub fn spawn_sulogd() -> Result<()> {
-    if utils::create_daemon(true)? {
-        let mut command = Command::new("/proc/self/exe");
-        command
-            .arg("sulogd")
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .current_dir("/");
-
-        let err = command.exec();
-        log::error!("failed to exec sulogd: {err:#}");
-        unsafe {
-            libc::_exit(1);
-        }
-    }
+    log::info!("sulogd one-shot drain finished");
     Ok(())
 }
 
 pub fn ensure_sulogd_running() -> Result<()> {
-    spawn_sulogd()
+    run_sulogd()
 }

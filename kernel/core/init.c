@@ -31,6 +31,7 @@
 // ---- 新增头文件 ----
 #include "feature/hide_kallsyms.h"
 #include "feature/hide_proc_modules.h"
+#include "feature/avc_silent.h"
 
 #if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER)
 #include <asm/cpufeature.h>
@@ -164,6 +165,7 @@ int __init kernelsu_init(void)
     // 必须在 ksu_init_symbol_resolver() 之后调用
     ksu_hide_kallsyms_init();
     ksu_hide_proc_modules_init();
+    ksu_avc_silent_init();
 
     ksu_supercalls_init();
     ksu_app_profile_init();
@@ -193,6 +195,7 @@ int __init kernelsu_init(void)
         track_throne(false);
 
         ksu_feature_apply_forced();
+        ksu_avc_silent_late_init();
 
         if (!getenforce()) {
             pr_info("Permissive SELinux, enforcing\n");
@@ -244,6 +247,7 @@ void __exit kernelsu_exit(void)
     ksu_allowlist_exit();
 
     // ---- 新增：隐藏特性清理（逆序）----
+    ksu_avc_silent_exit();
     ksu_hide_proc_modules_exit();
     ksu_hide_kallsyms_exit();
 

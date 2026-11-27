@@ -19,10 +19,11 @@ pub enum FeatureId {
     // 9 was hide_cmdline (this branch), removed in favour of SUSFS. Keep the
     // number unused so it is not recycled.
     HideProcModules = 10,
+    AvcSilent = 11,
 }
 
 impl FeatureId {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::SuCompat,
         Self::KernelUmount,
         Self::Sulog,
@@ -32,6 +33,7 @@ impl FeatureId {
         Self::HideKallsyms,
         Self::SuCompatPath,
         Self::HideProcModules,
+        Self::AvcSilent,
     ];
 
     pub const fn from_u32(id: u32) -> Option<Self> {
@@ -45,6 +47,7 @@ impl FeatureId {
             7 => Some(Self::HideKallsyms),
             8 => Some(Self::SuCompatPath),
             10 => Some(Self::HideProcModules),
+            11 => Some(Self::AvcSilent),
             _ => None,
         }
     }
@@ -60,6 +63,7 @@ impl FeatureId {
             Self::HideKallsyms => "hide_kallsyms",
             Self::SuCompatPath => "su_compat_path",
             Self::HideProcModules => "hide_proc_modules",
+            Self::AvcSilent => "avc_silent",
         }
     }
 
@@ -88,6 +92,9 @@ impl FeatureId {
             Self::HideProcModules => {
                 "Hide Proc Modules - drop the kernelsu module line from /proc/modules, matching /sys/module hiding"
             }
+            Self::AvcSilent => {
+                "AVC Silent - drop denied audit records for vendor_hal_perf_default/system_server/app_zygote -> ksu, and for ksu as source"
+            }
         }
     }
 }
@@ -103,6 +110,7 @@ pub fn parse_feature_id(name: &str) -> Result<FeatureId> {
         "hide_kallsyms" | "7" => Ok(FeatureId::HideKallsyms),
         "su_compat_path" | "8" => Ok(FeatureId::SuCompatPath),
         "hide_proc_modules" | "10" => Ok(FeatureId::HideProcModules),
+        "avc_silent" | "11" => Ok(FeatureId::AvcSilent),
         _ => bail!("Unknown feature: {name}"),
     }
 }

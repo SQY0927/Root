@@ -14,7 +14,8 @@ enum ksu_feature_id {
     // 9 was hide_cmdline (this branch); removed in favour of SUSFS. Keep the
     // number unused so it is not recycled.
     KSU_FEATURE_HIDE_PROC_MODULES = 10,
-    KSU_FEATURE_MAX = 11
+    KSU_FEATURE_AVC_SILENT = 11,
+    KSU_FEATURE_MAX = 12
 };
 
 #endif

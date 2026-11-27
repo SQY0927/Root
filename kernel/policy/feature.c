@@ -21,6 +21,7 @@ static const char *const feature_names[KSU_FEATURE_MAX] = {
     [KSU_FEATURE_HIDE_KALLSYMS] = "hide_kallsyms",
     [KSU_FEATURE_SU_COMPAT_PATH] = "su_compat_path",
     [KSU_FEATURE_HIDE_PROC_MODULES] = "hide_proc_modules",
+    [KSU_FEATURE_AVC_SILENT] = "avc_silent",
 };
 
 // Features forced by boot config. Written only while parsing module params
