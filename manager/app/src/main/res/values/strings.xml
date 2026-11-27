@@ -267,6 +267,11 @@
     <string name="settings_shell_su_adb_only_summary">Extra check when Shell is granted root: only processes spawned by adbd or a TKernelSU root process (e.g. an ADB module) can use it, preventing apps that obtain shell privileges from escalating to root</string>
     <string name="settings_hide_kallsyms">Hide kallsyms</string>
     <string name="settings_hide_kallsyms_summary">Drop kernel symbol lines containing TKernelSU markers from /proc/kallsyms for app UIDs</string>
+    <string name="settings_avc_silent_observe">Log only</string>
+    <string name="settings_avc_silent_observe_summary">Keep SELinux denial records from the perf HAL in the audit log without dropping them</string>
+    <string name="settings_avc_silent_enforce">Block</string>
+    <string name="settings_avc_silent_enforce_summary">Drop SELinux denial records from the perf HAL at the kernel audit exit; only available when this HAL is present</string>
+    <string name="settings_avc_silent_failed">Failed to change the AVC silent mode</string>
     <string name="menu_sort">Sort</string>
     <string name="sort_by_name">Application name</string>
     <string name="sort_by_package_name">Package name</string>

@@ -14,6 +14,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import hanasakikoi.tklsu.moe.Natives
 import hanasakikoi.tklsu.moe.R
+import hanasakikoi.tklsu.moe.data.avc.AVC_SILENT_MODE_ENFORCE
+import hanasakikoi.tklsu.moe.data.avc.AVC_SILENT_MODE_OBSERVE
+import hanasakikoi.tklsu.moe.data.avc.AVC_SILENT_MODE_OFF
 import hanasakikoi.tklsu.moe.data.repository.SettingsRepository
 import hanasakikoi.tklsu.moe.data.repository.SettingsRepositoryImpl
 import hanasakikoi.tklsu.moe.ksuApp
@@ -97,6 +100,13 @@ class SettingsViewModel(
             } else {
                 repo.getHideKallsymsPersistValue() == 1L
             }
+            val avcSilentStatus = repo.getAvcSilentStatus()
+            // 内核值优先；内核还没装/不支持时回落到落盘的期望档位
+            val avcSilentMode = if (avcSilentStatus == "supported") {
+                (repo.getAvcSilentValue() ?: repo.avcSilentDesiredMode.toLong()).toInt()
+            } else {
+                repo.avcSilentDesiredMode
+            }
             val isDefaultUmountModules = repo.isDefaultUmountModules()
             val uiMode = repo.uiMode
             val autoJailbreak = repo.autoJailbreak
@@ -131,6 +141,8 @@ class SettingsViewModel(
                     isShellSuAdbOnlyEnabled = isShellSuAdbOnlyEnabled,
                     hideKallsymsStatus = hideKallsymsStatus,
                     isHideKallsymsEnabled = isHideKallsymsEnabled,
+                    avcSilentStatus = avcSilentStatus,
+                    avcSilentMode = avcSilentMode,
                     kernelUmountStatus = kernelUmountStatus,
                     isKernelUmountEnabled = isKernelUmountEnabled,
                     selinuxHideStatus = selinuxHideStatus,
@@ -381,6 +393,27 @@ class SettingsViewModel(
                 repo.execKsudFeatureSave()
                 _uiState.update { it.copy(isHideKallsymsEnabled = enabled) }
             }
+        }
+    }
+
+    fun setAvcSilentObserveEnabled(enabled: Boolean) {
+        applyAvcSilentMode(if (enabled) AVC_SILENT_MODE_OBSERVE else AVC_SILENT_MODE_OFF)
+    }
+
+    fun setAvcSilentEnforceEnabled(enabled: Boolean) {
+        applyAvcSilentMode(if (enabled) AVC_SILENT_MODE_ENFORCE else AVC_SILENT_MODE_OFF)
+    }
+
+    private fun applyAvcSilentMode(mode: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!repo.setAvcSilentMode(mode)) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ksuApp, R.string.settings_avc_silent_failed, Toast.LENGTH_LONG).show()
+                }
+                return@launch
+            }
+            repo.avcSilentDesiredMode = mode
+            _uiState.update { it.copy(avcSilentMode = mode) }
         }
     }
 

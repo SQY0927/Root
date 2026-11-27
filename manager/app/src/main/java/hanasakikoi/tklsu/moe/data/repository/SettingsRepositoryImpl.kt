@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import hanasakikoi.tklsu.moe.Natives
 import hanasakikoi.tklsu.moe.ksuApp
+import hanasakikoi.tklsu.moe.data.avc.AVC_SILENT_MODE_ENFORCE
 import hanasakikoi.tklsu.moe.magica.BootCompletedReceiver
 import hanasakikoi.tklsu.moe.ui.UiMode
 import hanasakikoi.tklsu.moe.ui.screen.modulerepo.RepoSort
@@ -34,6 +35,7 @@ class SettingsRepositoryImpl : SettingsRepository {
 
     private companion object {
         private const val INTENT_TOKEN_KEY = "intent_token"
+        private const val AVC_SILENT_MODE_KEY = "avc_silent_mode"
         private val secureRandom = SecureRandom()
     }
 
@@ -260,6 +262,22 @@ class SettingsRepositoryImpl : SettingsRepository {
 
     override fun setHideKallsymsEnabled(enabled: Boolean): Boolean =
         execKsud("feature set hide_kallsyms ${if (enabled) 1 else 0}", true)
+
+    // 默认档位是拦截；不支持该特性的机型由 status 判定后置灰，这里只负责落盘
+    override var avcSilentDesiredMode: Int
+        get() = prefs.getInt(AVC_SILENT_MODE_KEY, AVC_SILENT_MODE_ENFORCE)
+        set(value) = prefs.edit { putInt(AVC_SILENT_MODE_KEY, value) }
+
+    override suspend fun getAvcSilentStatus(): String = getFeatureStatus("avc_silent")
+
+    override suspend fun getAvcSilentValue(): Long? = getFeatureValue("avc_silent")
+
+    override fun setAvcSilentMode(mode: Int): Boolean {
+        if (!execKsud("feature set avc_silent $mode", true)) return false
+        // ksud feature set 只写内核，这里补一次落盘，避免下次配置加载回退到旧值
+        execKsud("feature save", true)
+        return true
+    }
 
     override fun isDefaultUmountModules(): Boolean = Natives.isDefaultUmountModules()
 

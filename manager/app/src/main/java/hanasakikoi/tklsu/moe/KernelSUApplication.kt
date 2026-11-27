@@ -8,6 +8,7 @@ import android.system.Os
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
+import hanasakikoi.tklsu.moe.data.avc.AvcSilentGuard
 import hanasakikoi.tklsu.moe.data.repository.SettingsRepositoryImpl
 import hanasakikoi.tklsu.moe.ui.viewmodel.SuperUserViewModel
 import okhttp3.Cache
@@ -44,6 +45,9 @@ class KernelSUApplication : Application(), ViewModelStoreOwner {
         if (!isUserUnlocked()) {
             return
         }
+
+        // 「拦截」档守护：本进程是普通应用 uid，只做定时校验，必要时才短暂提权
+        AvcSilentGuard.start()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val enable = SettingsRepositoryImpl().enablePredictiveBack

@@ -72,6 +72,13 @@ interface SettingsRepository {
     suspend fun getHideKallsymsValue(): Long?
     fun setHideKallsymsEnabled(enabled: Boolean): Boolean
 
+    /** 期望档位：0 = 关闭，1 = 只记录，2 = 拦截。落盘保存，开机后由守护补写。 */
+    var avcSilentDesiredMode: Int
+    suspend fun getAvcSilentStatus(): String
+    suspend fun getAvcSilentValue(): Long?
+    /** 写内核档位并落盘（feature save），失败返回 false。 */
+    fun setAvcSilentMode(mode: Int): Boolean
+
     fun isDefaultUmountModules(): Boolean
     fun setDefaultUmountModules(enabled: Boolean): Boolean
 

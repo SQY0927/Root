@@ -308,6 +308,50 @@ fun SettingPagerMiuix(
                                 }
                             )
 
+                            val avcSilentObserveSummary = when (uiState.avcSilentStatus) {
+                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
+                                else -> stringResource(id = R.string.settings_avc_silent_observe_summary)
+                            }
+                            SwitchPreference(
+                                title = stringResource(id = R.string.settings_avc_silent_observe),
+                                summary = avcSilentObserveSummary,
+                                startAction = {
+                                    Icon(
+                                        Icons.Rounded.FindInPage,
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        contentDescription = stringResource(id = R.string.settings_avc_silent_observe),
+                                        tint = colorScheme.onBackground
+                                    )
+                                },
+                                checked = uiState.avcSilentMode == 1,
+                                enabled = uiState.avcSilentStatus == "supported",
+                                onCheckedChange = actions.onSetAvcSilentObserveEnabled
+                            )
+
+                            val avcSilentEnforceSummary = when (uiState.avcSilentStatus) {
+                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                "forced" -> stringResource(id = R.string.feature_status_forced_summary)
+                                else -> stringResource(id = R.string.settings_avc_silent_enforce_summary)
+                            }
+                            SwitchPreference(
+                                title = stringResource(id = R.string.settings_avc_silent_enforce),
+                                summary = avcSilentEnforceSummary,
+                                startAction = {
+                                    Icon(
+                                        Icons.Rounded.Security,
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        contentDescription = stringResource(id = R.string.settings_avc_silent_enforce),
+                                        tint = colorScheme.onBackground
+                                    )
+                                },
+                                checked = uiState.avcSilentMode == 2,
+                                enabled = uiState.avcSilentStatus == "supported",
+                                onCheckedChange = actions.onSetAvcSilentEnforceEnabled
+                            )
+
                             val suCompatSummary = when (uiState.suCompatStatus) {
                                 "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                                 "managed" -> stringResource(id = R.string.feature_status_managed_summary)

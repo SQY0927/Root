@@ -242,6 +242,11 @@
     <string name="settings_shell_su_adb_only_summary">授权 Shell 后的额外检查：仅由 adbd 或 TKernelSU Root 进程（如 ADB 模块）启动的 shell 进程可获取 Root，防止应用提权到 shell 后进一步获取 Root</string>
     <string name="settings_hide_kallsyms">隐藏 kallsyms</string>
     <string name="settings_hide_kallsyms_summary">对应用 UID 屏蔽 /proc/kallsyms 中带 TKernelSU 特征的内核符号行</string>
+    <string name="settings_avc_silent_observe">只记录</string>
+    <string name="settings_avc_silent_observe_summary">保留性能 HAL 产生的 SELinux 拒绝记录，不做丢弃</string>
+    <string name="settings_avc_silent_enforce">拦截</string>
+    <string name="settings_avc_silent_enforce_summary">在内核审计出口丢弃性能 HAL 的 SELinux 拒绝记录；仅当本机存在该 HAL 时可用</string>
+    <string name="settings_avc_silent_failed">修改 AVC 静默档位失败</string>
     <string name="settings_selinux_hide">隐藏 SELinux 修改</string>
     <string name="settings_selinux_hide_summary">阻止应用检测 SELinux 修改</string>
     <string name="settings_selinux_hide_reboot_required">重启生效</string>

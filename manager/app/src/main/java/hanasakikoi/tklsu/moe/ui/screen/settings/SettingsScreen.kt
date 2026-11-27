@@ -67,6 +67,8 @@ fun SettingPager(
         onSetAdbRootEnabled = viewModel::setAdbRootEnabled,
         onSetShellSuAdbOnlyEnabled = viewModel::setShellSuAdbOnlyEnabled,
         onSetHideKallsymsEnabled = viewModel::setHideKallsymsEnabled,
+        onSetAvcSilentObserveEnabled = viewModel::setAvcSilentObserveEnabled,
+        onSetAvcSilentEnforceEnabled = viewModel::setAvcSilentEnforceEnabled,
         onSetDefaultUmountModules = viewModel::setDefaultUmountModules,
         onSetEnableWebDebugging = viewModel::setEnableWebDebugging,
         onSetAutoJailbreak = viewModel::setAutoJailbreak,

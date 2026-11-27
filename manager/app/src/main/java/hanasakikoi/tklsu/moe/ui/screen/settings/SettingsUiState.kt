@@ -64,6 +64,10 @@ data class SettingsUiState(
     val hideKallsymsStatus: String = "",
     val isHideKallsymsEnabled: Boolean = false,
 
+    // AVC Silent: 0 = 关闭, 1 = 只记录, 2 = 拦截
+    val avcSilentStatus: String = "",
+    val avcSilentMode: Int = 0,
+
     val isLateLoadMode: Boolean = false,
 
     // Auto Jailbreak
@@ -86,6 +90,8 @@ data class SettingsScreenActions(
     val onSetAdbRootEnabled: (Boolean) -> Unit,
     val onSetShellSuAdbOnlyEnabled: (Boolean) -> Unit,
     val onSetHideKallsymsEnabled: (Boolean) -> Unit,
+    val onSetAvcSilentObserveEnabled: (Boolean) -> Unit,
+    val onSetAvcSilentEnforceEnabled: (Boolean) -> Unit,
     val onSetDefaultUmountModules: (Boolean) -> Unit,
     val onSetEnableWebDebugging: (Boolean) -> Unit,
     val onSetAutoJailbreak: (Boolean) -> Unit,
